@@ -1,142 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Panel Energy Calculator</title>
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: "Times New Roman", Times, serif;
-            font-size: 16px;
-            text-align: center;
-        }
-        .container {
-            margin: 50px auto;
-            width: 300px;
-            padding: 20px;
-            border: 1px solid white;
-            border-radius: 10px;
-            background-color: #222;
-        }
-        input {
-            width: 90%;
-            padding: 5px;
-            margin: 10px 0;
-            background-color: #333;
-            color: white;
-            border: 1px solid white;
-        }
-        button {
-            background-color: gray;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: white;
-            color: black;
-        }
-        #results {
-            display: none;
-        }
-    </style>
-</head>
-<body>
+function calculateEnergy() {
+    // Read user inputs
+    let area = parseFloat(document.getElementById("area").value);
+    let efficiency = parseFloat(document.getElementById("efficiency").value) / 100;
+    let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
+    let heat_rate = parseFloat(document.getElementById("heat_rate").value);
+    let temp_start = parseFloat(document.getElementById("temp_start").value);
+    let temp_end = parseFloat(document.getElementById("temp_end").value);
+    let irradiance = parseFloat(document.getElementById("irradiance").value);
+    let day_length = parseFloat(document.getElementById("day_length").value);
 
-    <div id="input-container" class="container">
-        <h2>Solar Panel Energy Calculator</h2>
-        <label>Panel area (m²):</label>
-        <input type="number" id="area" value="1">
+    // Calculate heating time
+    let delta_T = temp_end - temp_start;
+    let heat_time = delta_T / heat_rate; // minutes
 
-        <label>Nominal efficiency (%):</label>
-        <input type="number" id="efficiency" value="20">
+    // Convert irradiance to W/m²
+    let I = (irradiance / day_length) * 1000; 
 
-        <label>Efficiency decrease (%/°C):</label>
-        <input type="number" id="eff_decrease" value="0.4">
+    // Calculate efficiency decrease factor
+    let k = eff_decrease * heat_rate;
+    
+    // Energy during heating phase (integral calculation)
+    let integral_factor = (heat_time - 0.5 * k * (heat_time ** 2));
+    let energy_heat = I * area * efficiency * (integral_factor / 60); // in Wh
 
-        <label>Heating rate (°C/min):</label>
-        <input type="number" id="heat_rate" value="3.5">
+    // Energy during plateau phase
+    let eff_plateau = efficiency * (1 - k * delta_T);
+    let plateau_time = (day_length * 60) - heat_time;
+    let energy_plateau = I * area * eff_plateau * (plateau_time / 60); // in Wh
 
-        <label>Initial temperature (°C):</label>
-        <input type="number" id="temp_start" value="25">
+    // Total energy
+    let total_energy_Wh = energy_heat + energy_plateau;
+    let total_energy_kWh = total_energy_Wh / 1000;
 
-        <label>Final temperature (°C):</label>
-        <input type="number" id="temp_end" value="65">
+    // Show results
+    let resultText = `
+        <strong>Heating time:</strong> ${heat_time.toFixed(2)} minutes<br>
+        <strong>Energy during heating:</strong> ${energy_heat.toFixed(2)} Wh<br>
+        <strong>Energy during plateau:</strong> ${energy_plateau.toFixed(2)} Wh<br>
+        <strong>Total Energy:</strong> ${total_energy_Wh.toFixed(2)} Wh (${total_energy_kWh.toFixed(2)} kWh)
+    `;
 
-        <label>Solar irradiance (kWh/m²/day):</label>
-        <input type="number" id="irradiance" value="5">
+    document.getElementById("output").innerHTML = resultText;
 
-        <label>Day length (hours):</label>
-        <input type="number" id="day_length" value="12">
+    // Hide input container and show results
+    document.getElementById("input-container").style.display = "none";
+    document.getElementById("results").style.display = "block";
+}
 
-        <button onclick="calculateEnergy()">Calculate</button>
-    </div>
+function resetForm() {
+    document.getElementById("results").style.display = "none";
+    document.getElementById("input-container").style.display = "block";
 
-    <div id="results" class="container">
-        <h2>Calculation Results</h2>
-        <p id="output"></p>
-        <button onclick="resetForm()">Close</button>
-    </div>
-
-    <script>
-        function calculateEnergy() {
-            // Read user inputs
-            let area = parseFloat(document.getElementById("area").value);
-            let efficiency = parseFloat(document.getElementById("efficiency").value) / 100;
-            let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
-            let heat_rate = parseFloat(document.getElementById("heat_rate").value);
-            let temp_start = parseFloat(document.getElementById("temp_start").value);
-            let temp_end = parseFloat(document.getElementById("temp_end").value);
-            let irradiance = parseFloat(document.getElementById("irradiance").value);
-            let day_length = parseFloat(document.getElementById("day_length").value);
-
-            // Calculate heating time
-            let delta_T = temp_end - temp_start;
-            let heat_time = delta_T / heat_rate; // minutes
-
-            // Convert irradiance to W/m²
-            let I = (irradiance / day_length) * 1000; 
-
-            // Calculate efficiency decrease factor
-            let k = eff_decrease * heat_rate;
-
-            // Energy during heating phase (integral calculation)
-            let integral_factor = (1 - 0.5 * k * (heat_time ** 2));
-            let energy_heat = I * area * efficiency * (integral_factor * heat_time / 60); // in Wh
-
-            // Energy during plateau phase
-            let eff_plateau = efficiency * (1 - k * delta_T);
-            let plateau_time = (day_length * 60) - heat_time;
-            let energy_plateau = I * area * eff_plateau * (plateau_time / 60); // in Wh
-
-            // Total energy
-            let total_energy_Wh = energy_heat + energy_plateau;
-            let total_energy_kWh = total_energy_Wh / 1000;
-
-            // Show results
-            let resultText = `
-                <strong>Heating time:</strong> ${heat_time.toFixed(2)} minutes<br>
-                <strong>Energy during heating:</strong> ${energy_heat.toFixed(2)} Wh<br>
-                <strong>Energy during plateau:</strong> ${energy_plateau.toFixed(2)} Wh<br>
-                <strong>Total Energy:</strong> ${total_energy_Wh.toFixed(2)} Wh (${total_energy_kWh.toFixed(2)} kWh)
-            `;
-
-            document.getElementById("output").innerHTML = resultText;
-
-            // Hide input container and show results
-            document.getElementById("input-container").style.display = "none";
-            document.getElementById("results").style.display = "block";
-        }
-
-        function resetForm() {
-            document.getElementById("results").style.display = "none";
-            document.getElementById("input-container").style.display = "block";
-        }
-    </script>
-
-</body>
-</html>
+    // Reset input values
+    document.getElementById("area").value = "1";
+    document.getElementById("efficiency").value = "20";
+    document.getElementById("eff_decrease").value = "0.4";
+    document.getElementById("heat_rate").value = "3.5";
+    document.getElementById("temp_start").value = "25";
+    document.getElementById("temp_end").value = "65";
+    document.getElementById("irradiance").value = "5";
+    document.getElementById("day_length").value = "12";
+}
