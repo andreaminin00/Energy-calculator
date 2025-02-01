@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Photovoltaic Energy Calculator</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css">
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <style>
+      body {
+        background-color: black;
+        color: white;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 16px;
+      }
+      input, button {
+        background-color: black;
+        color: white;
+        border: 1px solid white;
+        padding: 5px;
+        font-size: 16px;
+      }
+      .container { margin: 20px; }
+      button { cursor: pointer; }
+      #py-error { display: none; } /* Nasconde errori PyScript */
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <label for="area">Panel area (m²):</label>
+      <input type="number" id="area">
+      <label for="nom_eff">Nominal efficiency (%):</label>
+      <input type="number" id="nom_eff">
+      <label for="decr">Efficiency decrement (%/°C):</label>
+      <input type="number" id="decr">
+      <label for="heating_rate">Heating rate (°C/min):</label>
+      <input type="number" id="heating_rate">
+      <label for="initial_temp">Initial temperature (°C):</label>
+      <input type="number" id="initial_temp">
+      <label for="final_temp">Final temperature (°C):</label>
+      <input type="number" id="final_temp">
+      <label for="irradiance">Solar irradiance (kWh/m²/day):</label>
+      <input type="number" id="irradiance">
+      <label for="day_length">Day length (hours):</label>
+      <input type="number" id="day_length">
+      <button id="calculate-btn">Calculate</button>
+    </div>
+
+    <div id="results-container" class="container" style="display: none;"></div>
+
+    <py-script>
+from js import document
+
+def calculate_energy(event):
+    try:
+        area = float(document.getElementById("area").value)
+        nom_eff_percent = float(document.getElementById("nom_eff").value)
+        decr = float(document.getElementById("decr").value)
+        heating_rate = float(document.getElementById("heating_rate").value)
+        initial_temp = float(document.getElementById("initial_temp").value)
+        final_temp = float(document.getElementById("final_temp").value)
+        irradiance = float(document.getElementById("irradiance").value)
+        day_length = float(document.getElementById("day_length").value)
+        
+        nominal_eff = nom_eff_percent / 100.0
+        k_decr = decr / 100.0
+        I = (irradiance / day_length) * 1000
+        
+        delta_T = final_temp - initial_temp
+        t_heat = delta_T / heating_rate
+        
+        k = k_decr * heating_rate
+        integral_value = t_heat - 0.5 * k * (t_heat ** 2)
+        E_heat = I * area * nominal_eff * (integral_value / 60)
+        
+        eff_plateau = nominal_eff * (1 - k_decr * delta_T)
+        t_plateau = (day_length * 60) - t_heat
+        E_plateau = I * area * eff_plateau * (t_plateau / 60)
+        
+        E_tot_Wh = E_heat + E_plateau
+        E_tot_kWh = E_tot_Wh / 1000.0
+        
+        result_text = f"""
+        Heating time: {t_heat:.2f} min<br>
+        Energy during heating: {E_heat:.2f} Wh<br>
+        Energy during plateau: {E_plateau:.2f} Wh<br>
+        <b>TOTAL ENERGY: {E_tot_Wh:.2f} Wh ({E_tot_kWh:.2f} kWh)</b>
+        <br><button id='close-btn'>Close</button>
+        """
+        
+        document.getElementById("input-container").style.display = "none"
+        results_container = document.getElementById("results-container")
+        results_container.innerHTML = result_text
+        results_container.style.display = "block"
+        
+        def close_all(event):
+            results_container.innerHTML = ""
+            results_container.style.display = "none"
+            document.getElementById("input-container").style.display = "block"
+
+        document.getElementById("close-btn").addEventListener("click", close_all)
+    
+    except Exception as e:
+        results_container.innerHTML = f"Error: {e}"
+        results_container.style.display = "block"
+
+document.getElementById("calculate-btn").addEventListener("click", calculate_energy)
+    </py-script>
+
+  </body>
+</html>
