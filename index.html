@@ -1,161 +1,320 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Panel Energy Calculator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500&family=Lato:wght@300;400;700&display=swap'" rel="stylesheet">
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: 'Quicksand', sans-serif;
-            font-size: 16px;
-            text-align: center;
-        }
-        .container {
-            margin: 50px auto;
-            width: 400px;
-            padding: 20px;
-            border: 1px solid white;
-            border-radius: 10px;
-            background-color: #222;
-        }
-        input {
-            width: 90%;
-            padding: 5px;
-            margin: 10px 0;
-            background-color: #333;
-            color: white;
-            border: 1px solid white;
-        }
-        button {
-            background-color: gray;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: white;
-            color: black;
-        }
-        #results {
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Panel Energy Calculator</title>
+  <!-- Inclusione del font Quicksand -->
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
+  <!-- Inclusione di Chart.js tramite CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 16px;
+      text-align: center;
+    }
+    .container {
+      margin: 50px auto;
+      width: 400px;
+      padding: 20px;
+      border: 1px solid white;
+      border-radius: 10px;
+      background-color: #222;
+    }
+    input {
+      width: 90%;
+      padding: 5px;
+      margin: 10px 0;
+      background-color: #333;
+      color: white;
+      border: 1px solid white;
+    }
+    button {
+      background-color: gray;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: white;
+      color: black;
+    }
+    #results {
+      display: none;
+    }
+    /* Stile per i grafici */
+    .chart-container {
+      margin-top: 20px;
+    }
+    /* Stile per il pulsante CSV in forma di cerchio più piccolo, centrato */
+    .export-buttons {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+    }
+    .export-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #ffa500;
+      background-color: transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      /* Nessun testo */
+      font-size: 0;
+    }
+    .export-btn:hover {
+      background-color: #ffa500;
+      box-shadow: 0 0 10px #ffa500;
+    }
+  </style>
 </head>
 <body>
 
-    <div id="input-container" class="container">
-        <h2>Solar Panel Energy Calculator</h2>
-        <label>Panel area (m²):</label>
-        <input type="number" id="area" placeholder="(m²)">
+  <div id="input-container" class="container">
+    <h2>Solar Panel Energy Calculator</h2>
+    <label>Panel area (m²):</label>
+    <input type="number" id="area" placeholder="(m²)">
 
-        <label>Nominal efficiency (%):</label>
-        <input type="number" id="efficiency" placeholder="(%)">
+    <label>Nominal efficiency (%):</label>
+    <input type="number" id="efficiency" placeholder="(%)">
 
-        <label>Efficiency decrease (%/°C):</label>
-        <input type="number" id="eff_decrease" placeholder="(%/°C)">
+    <label>Efficiency decrease (%/°C):</label>
+    <input type="number" id="eff_decrease" placeholder="(%/°C)">
 
-        <label>Heating rate (°C/min):</label>
-        <input type="number" id="heat_rate" placeholder="(°C/min)">
+    <label>Heating rate (°C/min):</label>
+    <input type="number" id="heat_rate" placeholder="(°C/min)">
 
-        <label>Initial temperature (°C):</label>
-        <input type="number" id="temp_start" placeholder="(°C)">
+    <label>Initial temperature (°C):</label>
+    <input type="number" id="temp_start" placeholder="(°C)">
 
-        <label>Final temperature (°C):</label>
-        <input type="number" id="temp_end" placeholder="(°C)">
+    <label>Final temperature (°C):</label>
+    <input type="number" id="temp_end" placeholder="(°C)">
 
-        <label>Solar irradiance (kWh/m²/day):</label>
-        <input type="number" id="irradiance" placeholder="(kWh/m²/day)">
+    <label>Solar irradiance (kWh/m²/day):</label>
+    <input type="number" id="irradiance" placeholder="(kWh/m²/day)">
 
-        <label>Day length (hours):</label>
-        <input type="number" id="day_length" placeholder="(hours)">
+    <label>Day length (hours):</label>
+    <input type="number" id="day_length" placeholder="(hours)">
 
-        <button onclick="calculateEnergy()">Calculate</button>
+    <button onclick="calculateEnergy()">Calculate</button>
+  </div>
+
+  <div id="results" class="container">
+    <h2>Results</h2>
+    <p id="output"></p>
+    <!-- Grafico della Temperatura -->
+    <div class="chart-container">
+      <canvas id="tempChart" width="300" height="200"></canvas>
+      <div class="export-buttons">
+        <button class="export-btn" onclick="exportChartData('tempChart')" title="Esporta dati CSV"></button>
+      </div>
     </div>
-
-    <div id="results" class="container">
-        <h2>Results</h2>
-        <p id="output"></p>
-        <button onclick="resetForm()">Close</button>
+    <!-- Grafico dell'Efficienza -->
+    <div class="chart-container">
+      <canvas id="effChart" width="300" height="200"></canvas>
+      <div class="export-buttons">
+        <button class="export-btn" onclick="exportChartData('effChart')" title="Esporta dati CSV"></button>
+      </div>
     </div>
+    <button onclick="resetForm()">Close</button>
+  </div>
 
-    <script>
-        function calculateEnergy() {
-            // Legge i valori inseriti dall'utente
-            let area = parseFloat(document.getElementById("area").value);
-            let efficiency = parseFloat(document.getElementById("efficiency").value) / 100;
-            let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
-            let heat_rate = parseFloat(document.getElementById("heat_rate").value);
-            let temp_start = parseFloat(document.getElementById("temp_start").value);
-            let temp_end = parseFloat(document.getElementById("temp_end").value);
-            let irradiance = parseFloat(document.getElementById("irradiance").value);
-            let day_length = parseFloat(document.getElementById("day_length").value);
+  <script>
+    function calculateEnergy() {
+      // Legge i valori inseriti dall'utente
+      let area = parseFloat(document.getElementById("area").value);
+      let efficiency = parseFloat(document.getElementById("efficiency").value) / 100;
+      let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
+      let heat_rate = parseFloat(document.getElementById("heat_rate").value);
+      let temp_start = parseFloat(document.getElementById("temp_start").value);
+      let temp_end = parseFloat(document.getElementById("temp_end").value);
+      let irradiance = parseFloat(document.getElementById("irradiance").value);
+      let day_length = parseFloat(document.getElementById("day_length").value);
 
-            // Calcolo del tempo di riscaldamento
-            let delta_T = temp_end - temp_start;
-            let heat_time = delta_T / heat_rate; // tempo in minuti
+      // Calcolo del tempo di riscaldamento (in minuti)
+      let delta_T = temp_end - temp_start;
+      let heat_time = delta_T / heat_rate;
 
-            // Conversione dell'irradianza da kWh/m²/day a W/m²:
-            // irradiance / day_length dà kWh/m²/h, moltiplicando per 1000 otteniamo W/m².
-            // Quindi I è in W/m².
-            let I = (irradiance / day_length) * 1000; 
+      // Conversione dell'irradianza in W/m²
+      let I = (irradiance / day_length) * 1000;
 
-            // Calcolo dell'efficienza durante il riscaldamento
-            let eff_initial = efficiency;
-            let eff_final = efficiency * (1 - eff_decrease * delta_T);
-            // Assicuriamoci che l'efficienza finale non sia negativa
-            eff_final = Math.max(eff_final, 0);
+      // Calcolo dell'efficienza durante il riscaldamento
+      let eff_initial = efficiency;
+      let eff_final = efficiency * (1 - eff_decrease * delta_T);
+      eff_final = Math.max(eff_final, 0);
 
-            // Approssimazione lineare dell'efficienza media durante il riscaldamento:
-            // L'efficienza media si calcola come la media aritmetica tra l'efficienza iniziale e quella finale.
-            let avg_efficiency_heating = (eff_initial + eff_final) / 2;
-            let energy_heat = I * area * avg_efficiency_heating * (heat_time / 60); // energia in Wh
+      // Efficienza media in fase di riscaldamento
+      let avg_efficiency_heating = (eff_initial + eff_final) / 2;
+      let energy_heat = I * area * avg_efficiency_heating * (heat_time / 60);
 
-            // Calcolo dell'energia durante la fase di plateau (efficienza costante = eff_final)
-            let plateau_time = (day_length * 60) - heat_time; // tempo in minuti
-            let energy_plateau = I * area * eff_final * (plateau_time / 60); // energia in Wh
+      // Calcolo energia fase plateau
+      let totalMinutes = day_length * 60;
+      let plateau_time = totalMinutes - heat_time;
+      let energy_plateau = I * area * eff_final * (plateau_time / 60);
 
-            // Energia totale (Wh e kWh)
-            let total_energy_Wh = energy_heat + energy_plateau;
-            let total_energy_kWh = total_energy_Wh / 1000;
+      // Energia totale prodotta
+      let total_energy_Wh = energy_heat + energy_plateau;
+      let total_energy_kWh = total_energy_Wh / 1000;
 
-            // Mostra i risultati
-            let resultText = `
-                <strong>Heating time:</strong> ${heat_time.toFixed(2)} min<br>
-                <strong>Energy during heating:</strong> ${energy_heat.toFixed(2)} Wh<br>
-                <strong>Energy at plateau:</strong> ${energy_plateau.toFixed(2)} Wh<br>
-                <strong>Total energy:</strong> ${total_energy_Wh.toFixed(2)} Wh (${total_energy_kWh.toFixed(2)} kWh)
-            `;
+      // Visualizza i risultati testuali
+      let resultText = `
+        <strong>Heating time:</strong> ${heat_time.toFixed(2)} min<br>
+        <strong>Energy during heating:</strong> ${energy_heat.toFixed(2)} Wh<br>
+        <strong>Energy at plateau:</strong> ${energy_plateau.toFixed(2)} Wh<br>
+        <strong>Total energy:</strong> ${total_energy_Wh.toFixed(2)} Wh (${total_energy_kWh.toFixed(2)} kWh)
+      `;
+      document.getElementById("output").innerHTML = resultText;
 
-            document.getElementById("output").innerHTML = resultText;
-
-            // Nasconde la sezione di input e mostra quella dei risultati
-            document.getElementById("input-container").style.display = "none";
-            document.getElementById("results").style.display = "block";
+      // Calcola i dati per i grafici (simulazione minuto per minuto)
+      let timeLabels = [];
+      let tempData = [];
+      let effData = [];
+      for (let t = 0; t <= totalMinutes; t++) {
+        timeLabels.push(t);
+        if (t <= heat_time) {
+          let temp = temp_start + (delta_T * t / heat_time);
+          tempData.push(temp);
+          let eff = eff_initial - ((eff_initial - eff_final) * (t / heat_time));
+          effData.push(eff * 100);
+        } else {
+          tempData.push(temp_end);
+          effData.push(eff_final * 100);
         }
+      }
 
-        function resetForm() {
-            // Resetta i campi di input a stringa vuota
-            document.getElementById("area").value = "";
-            document.getElementById("efficiency").value = "";
-            document.getElementById("eff_decrease").value = "";
-            document.getElementById("heat_rate").value = "";
-            document.getElementById("temp_start").value = "";
-            document.getElementById("temp_end").value = "";
-            document.getElementById("irradiance").value = "";
-            document.getElementById("day_length").value = "";
-            
-            document.getElementById("input-container").style.display = "block";
-            document.getElementById("results").style.display = "none";
+      // Crea array di punti dati in formato {x: minuti, y: valore}
+      let tempDataPoints = timeLabels.map((t, i) => ({ x: t, y: tempData[i] }));
+      let effDataPoints = timeLabels.map((t, i) => ({ x: t, y: effData[i] }));
+
+      // Creazione del grafico della Temperatura
+      let ctxTemp = document.getElementById('tempChart').getContext('2d');
+      if (window.tempChart instanceof Chart) {
+        window.tempChart.destroy();
+      }
+      window.tempChart = new Chart(ctxTemp, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Temperature vs Time',
+            data: tempDataPoints,
+            borderColor: 'red',
+            backgroundColor: 'rgba(255, 0, 0, 0.1)',
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: {
+            x: { 
+              type: 'linear',
+              title: { display: true, text: 'Time (hours)' },
+              min: 0,
+              max: day_length * 60,
+              ticks: {
+                stepSize: 60,
+                callback: function(value) {
+                  return value / 60; // visualizza il tempo in ore
+                }
+              }
+            },
+            y: {
+              title: { display: true, text: 'Temperature (°C)' }
+            }
+          }
         }
+      });
 
-        // Al caricamento della pagina, inizializza i campi vuoti
-        window.onload = resetForm;
-    </script>
+      // Creazione del grafico dell'Efficienza
+      let ctxEff = document.getElementById('effChart').getContext('2d');
+      if (window.effChart instanceof Chart) {
+        window.effChart.destroy();
+      }
+      window.effChart = new Chart(ctxEff, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Efficiency vs Time',
+            data: effDataPoints,
+            borderColor: 'green',
+            backgroundColor: 'rgba(0, 255, 0, 0.1)',
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: {
+            x: { 
+              type: 'linear',
+              title: { display: true, text: 'Time (hours)' },
+              min: 0,
+              max: day_length * 60,
+              ticks: {
+                stepSize: 60,
+                callback: function(value) {
+                  return value / 60;
+                }
+              }
+            },
+            y: {
+              title: { display: true, text: 'Efficiency (%)' }
+            }
+          }
+        }
+      });
+
+      // Mostra la sezione dei risultati e nasconde quella degli input
+      document.getElementById("input-container").style.display = "none";
+      document.getElementById("results").style.display = "block";
+    }
+
+    // Funzione per esportare i dati del grafico in formato CSV usando ";" come delimitatore
+    function exportChartData(chartType) {
+      let chart;
+      if(chartType === 'tempChart'){
+        chart = window.tempChart;
+      } else if(chartType === 'effChart'){
+        chart = window.effChart;
+      } else {
+        return;
+      }
+      // Nota: per la prima riga usiamo ";" come delimitatore
+      let csvContent = "data:text/csv;charset=utf-8,Time (min);Value\n";
+      // I dati sono in formato {x, y} con x in minuti. Per y, se necessario, puoi usare toLocaleString per formattare i decimali.
+      let dataPoints = chart.data.datasets[0].data;
+      for(let i = 0; i < dataPoints.length; i++){
+        csvContent += dataPoints[i].x + ";" + dataPoints[i].y + "\n";
+      }
+      let encodedUri = encodeURI(csvContent);
+      let link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", chartType + "_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function resetForm() {
+      document.getElementById("area").value = "";
+      document.getElementById("efficiency").value = "";
+      document.getElementById("eff_decrease").value = "";
+      document.getElementById("heat_rate").value = "";
+      document.getElementById("temp_start").value = "";
+      document.getElementById("temp_end").value = "";
+      document.getElementById("irradiance").value = "";
+      document.getElementById("day_length").value = "";
+      
+      document.getElementById("input-container").style.display = "block";
+      document.getElementById("results").style.display = "none";
+    }
+
+    window.onload = resetForm;
+  </script>
 
 </body>
 </html>
