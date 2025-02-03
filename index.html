@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solar Panel Energy Calculator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500&family=Lato:wght@300;400;700&display=swap'" rel="stylesheet">
     <style>
         body {
             background-color: black;
@@ -13,89 +13,149 @@
             font-size: 16px;
             text-align: center;
         }
-        h2, button {
-            font-family: 'Lato', sans-serif;
-        }
         .container {
-            margin-top: 50px;
+            margin: 50px auto;
+            width: 400px;
+            padding: 20px;
+            border: 1px solid white;
+            border-radius: 10px;
+            background-color: #222;
         }
-        input, button {
-            font-size: 16px;
-            margin: 10px;
+        input {
+            width: 90%;
             padding: 5px;
+            margin: 10px 0;
+            background-color: #333;
+            color: white;
+            border: 1px solid white;
         }
-        .hidden {
+        button {
+            background-color: gray;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: white;
+            color: black;
+        }
+        #results {
             display: none;
         }
     </style>
 </head>
 <body>
+
     <div id="input-container" class="container">
-        <h2>Enter Parameters</h2>
-        <label>Panel Area (m²): <input type="number" id="area" value="1"></label><br>
-        <label>Nominal Efficiency (%): <input type="number" id="nom_eff" value="20"></label><br>
-        <label>Efficiency Decrease (%/°C): <input type="number" id="decr" value="0.4"></label><br>
-        <label>Heating Rate (°C/min): <input type="number" id="heating_rate" value="3.5"></label><br>
-        <label>Initial Temperature (°C): <input type="number" id="initial_temp" value="25"></label><br>
-        <label>Final Temperature (°C): <input type="number" id="final_temp" value="65"></label><br>
-        <label>Solar Irradiance (kWh/m²/day): <input type="number" id="irradiance" value="5"></label><br>
-        <label>Day Length (hours): <input type="number" id="day_length" value="12"></label><br>
-        <button id="calculate-btn">Calculate</button>
+        <h2>Solar Panel Energy Calculator</h2>
+        <label>Panel area (m²):</label>
+        <input type="number" id="area" placeholder="(m²)">
+
+        <label>Nominal efficiency (%):</label>
+        <input type="number" id="efficiency" placeholder="(%)">
+
+        <label>Efficiency decrease (%/°C):</label>
+        <input type="number" id="eff_decrease" placeholder="(%/°C)">
+
+        <label>Heating rate (°C/min):</label>
+        <input type="number" id="heat_rate" placeholder="(°C/min)">
+
+        <label>Initial temperature (°C):</label>
+        <input type="number" id="temp_start" placeholder="(°C)">
+
+        <label>Final temperature (°C):</label>
+        <input type="number" id="temp_end" placeholder="(°C)">
+
+        <label>Solar irradiance (kWh/m²/day):</label>
+        <input type="number" id="irradiance" placeholder="(kWh/m²/day)">
+
+        <label>Day length (hours):</label>
+        <input type="number" id="day_length" placeholder="(hours)">
+
+        <button onclick="calculateEnergy()">Calculate</button>
     </div>
-    
-    <div id="results-container" class="container hidden">
+
+    <div id="results" class="container">
         <h2>Results</h2>
-        <p id="results"></p>
-        <button id="close-btn">Close</button>
+        <p id="output"></p>
+        <button onclick="resetForm()">Close</button>
     </div>
 
     <script>
-        document.getElementById("calculate-btn").addEventListener("click", function() {
-            try {
-                let area = parseFloat(document.getElementById("area").value);
-                let nom_eff = parseFloat(document.getElementById("nom_eff").value) / 100;
-                let decr = parseFloat(document.getElementById("decr").value) / 100;
-                let heating_rate = parseFloat(document.getElementById("heating_rate").value);
-                let initial_temp = parseFloat(document.getElementById("initial_temp").value);
-                let final_temp = parseFloat(document.getElementById("final_temp").value);
-                let irradiance = parseFloat(document.getElementById("irradiance").value);
-                let day_length = parseFloat(document.getElementById("day_length").value);
+        function calculateEnergy() {
+            // Legge i valori inseriti dall'utente
+            let area = parseFloat(document.getElementById("area").value);
+            let efficiency = parseFloat(document.getElementById("efficiency").value) / 100;
+            let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
+            let heat_rate = parseFloat(document.getElementById("heat_rate").value);
+            let temp_start = parseFloat(document.getElementById("temp_start").value);
+            let temp_end = parseFloat(document.getElementById("temp_end").value);
+            let irradiance = parseFloat(document.getElementById("irradiance").value);
+            let day_length = parseFloat(document.getElementById("day_length").value);
 
-                let I = (irradiance / day_length) * 1000; // Convert kWh/m²/day to W/m²
-                let delta_T = final_temp - initial_temp;
-                let t_heat = delta_T / heating_rate; // Time to reach final temperature in minutes
-                let k = decr * heating_rate;
+            // Calcolo del tempo di riscaldamento
+            let delta_T = temp_end - temp_start;
+            let heat_time = delta_T / heat_rate; // tempo in minuti
 
-                let integral_value = t_heat * (1 - 0.5 * k * t_heat);
-                let E_heat = I * area * nom_eff * (integral_value / 60);
+            // Conversione dell'irradianza da kWh/m²/day a W/m²:
+            // irradiance / day_length dà kWh/m²/h, moltiplicando per 1000 otteniamo W/m².
+            // Quindi I è in W/m².
+            let I = (irradiance / day_length) * 1000; 
 
-                let eff_plateau = nom_eff * (1 - k * delta_T);
-                let t_plateau = (day_length * 60) - t_heat;
-                let E_plateau = I * area * eff_plateau * (t_plateau / 60);
+            // Calcolo dell'efficienza durante il riscaldamento
+            let eff_initial = efficiency;
+            let eff_final = efficiency * (1 - eff_decrease * delta_T);
+            // Assicuriamoci che l'efficienza finale non sia negativa
+            eff_final = Math.max(eff_final, 0);
 
-                let E_tot_Wh = E_heat + E_plateau;
-                let E_tot_kWh = E_tot_Wh / 1000;
+            // Approssimazione lineare dell'efficienza media durante il riscaldamento:
+            // L'efficienza media si calcola come la media aritmetica tra l'efficienza iniziale e quella finale.
+            let avg_efficiency_heating = (eff_initial + eff_final) / 2;
+            let energy_heat = I * area * avg_efficiency_heating * (heat_time / 60); // energia in Wh
 
-                let result_text = `Heating time: ${t_heat.toFixed(2)} minutes<br>
-                                   Energy during heating: ${E_heat.toFixed(2)} Wh<br>
-                                   Energy during plateau: ${E_plateau.toFixed(2)} Wh<br>
-                                   TOTAL ENERGY: ${E_tot_Wh.toFixed(2)} Wh (${E_tot_kWh.toFixed(2)} kWh)`;
+            // Calcolo dell'energia durante la fase di plateau (efficienza costante = eff_final)
+            let plateau_time = (day_length * 60) - heat_time; // tempo in minuti
+            let energy_plateau = I * area * eff_final * (plateau_time / 60); // energia in Wh
 
-                document.getElementById("results").innerHTML = result_text;
-                document.getElementById("input-container").classList.add("hidden");
-                document.getElementById("results-container").classList.remove("hidden");
-            } catch (error) {
-                document.getElementById("results").innerHTML = `Error: ${error.message}`;
-                document.getElementById("results-container").classList.remove("hidden");
-            }
-        });
-        
-        document.getElementById("close-btn").addEventListener("click", function() {
-            document.getElementById("results-container").classList.add("hidden");
-            document.getElementById("input-container").classList.remove("hidden");
-            document.getElementById("results").innerHTML = "";
-            document.querySelectorAll("input").forEach(input => input.value = "");
-        });
+            // Energia totale (Wh e kWh)
+            let total_energy_Wh = energy_heat + energy_plateau;
+            let total_energy_kWh = total_energy_Wh / 1000;
+
+            // Mostra i risultati
+            let resultText = `
+                <strong>Heating time:</strong> ${heat_time.toFixed(2)} min<br>
+                <strong>Energy during heating:</strong> ${energy_heat.toFixed(2)} Wh<br>
+                <strong>Energy at plateau:</strong> ${energy_plateau.toFixed(2)} Wh<br>
+                <strong>Total energy:</strong> ${total_energy_Wh.toFixed(2)} Wh (${total_energy_kWh.toFixed(2)} kWh)
+            `;
+
+            document.getElementById("output").innerHTML = resultText;
+
+            // Nasconde la sezione di input e mostra quella dei risultati
+            document.getElementById("input-container").style.display = "none";
+            document.getElementById("results").style.display = "block";
+        }
+
+        function resetForm() {
+            // Resetta i campi di input a stringa vuota
+            document.getElementById("area").value = "";
+            document.getElementById("efficiency").value = "";
+            document.getElementById("eff_decrease").value = "";
+            document.getElementById("heat_rate").value = "";
+            document.getElementById("temp_start").value = "";
+            document.getElementById("temp_end").value = "";
+            document.getElementById("irradiance").value = "";
+            document.getElementById("day_length").value = "";
+            
+            document.getElementById("input-container").style.display = "block";
+            document.getElementById("results").style.display = "none";
+        }
+
+        // Al caricamento della pagina, inizializza i campi vuoti
+        window.onload = resetForm;
     </script>
+
 </body>
 </html>
