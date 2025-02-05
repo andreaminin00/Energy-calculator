@@ -8,6 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
   <!-- Inclusione di Chart.js tramite CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Inclusione della libreria SunCalc per la posizione solare -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
   <style>
     body {
       background-color: black;
@@ -23,8 +25,9 @@
       border: 1px solid white;
       border-radius: 10px;
       background-color: #222;
+      position: relative;
     }
-    input {
+    input, select {
       width: 90%;
       padding: 5px;
       margin: 10px 0;
@@ -47,11 +50,24 @@
     #results {
       display: none;
     }
+    /* Container per il campo Length */
+    #day_length_container {
+      margin: 10px 0;
+    }
+    /* Container per i campi del profilo di riscaldamento (stepped) */
+    #profileOptions {
+      margin: 10px 0;
+      display: none;
+      border: 1px solid #0000FF;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #111;
+    }
     /* Stile per i grafici */
     .chart-container {
       margin-top: 20px;
     }
-    /* Stile per il pulsante CSV in forma di cerchio più piccolo, centrato */
+    /* Pulsante CSV (cerchio arancione chiaro) */
     .export-buttons {
       margin-top: 10px;
       display: flex;
@@ -65,17 +81,87 @@
       background-color: transparent;
       cursor: pointer;
       transition: all 0.3s ease;
-      /* Nessun testo */
       font-size: 0;
     }
     .export-btn:hover {
       background-color: #ffa500;
       box-shadow: 0 0 10px #ffa500;
     }
+    /* Pulsante Advanced Settings (arancione) */
+    .advanced-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #cc6600;
+      background-color: transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    .advanced-btn:hover {
+      background-color: #cc6600;
+      box-shadow: 0 0 10px #cc6600;
+    }
+    /* Pulsante Profile Settings (blu) spostato sotto quello arancione */
+    .profile-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #0000FF;
+      background-color: transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0;
+      position: absolute;
+      top: 50px; /* spostato sotto l'arancione */
+      right: 10px; /* allineato orizzontalmente con l'arancione */
+    }
+    .profile-btn:hover {
+      background-color: #0000FF;
+      box-shadow: 0 0 10px #0000FF;
+    }
+    /* Modal per Advanced Settings */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background-color: #333;
+      padding: 20px;
+      border: 1px solid white;
+      border-radius: 10px;
+      width: 300px;
+    }
+    .modal h3 {
+      margin-top: 0;
+    }
+    .modal button {
+      margin: 5px;
+      padding: 5px 10px;
+    }
+    /* Stile per la finestra delle coordinate in Advanced Settings */
+    #locationInfo {
+      margin-top: 10px;
+      padding: 5px;
+      border: 1px solid #ffa500;
+      border-radius: 5px;
+      background-color: #111;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
 
+  <!-- Sezione di input -->
   <div id="input-container" class="container">
     <h2>Solar Panel Energy Calculator</h2>
     <label>Panel area (m²):</label>
@@ -96,15 +182,31 @@
     <label>Final temperature (°C):</label>
     <input type="number" id="temp_end" placeholder="(°C)">
 
-    <label>Solar irradiance (kWh/m²/day):</label>
-    <input type="number" id="irradiance" placeholder="(kWh/m²/day)">
+    <label>Solar irradiance (kWh/m²):</label>
+    <input type="number" id="irradiance" placeholder="(kWh/m²)">
 
-    <label>Day length (hours):</label>
-    <input type="number" id="day_length" placeholder="(hours)">
+    <!-- Il campo Length verrà nascosto se si usano gli advanced settings -->
+    <div id="day_length_container">
+      <label>Length (hours):</label>
+      <input type="number" id="day_length" placeholder="(hours)">
+    </div>
+
+    <!-- Container per i campi del profilo di riscaldamento (appaiono solo se si seleziona "stepped") -->
+    <div id="profileOptions">
+      <label>Intermediate plateau temperature (°C):</label>
+      <input type="number" id="plateau_temp" placeholder="(°C)">
+      <label>Intermediate plateau duration (min):</label>
+      <input type="number" id="plateau_duration" placeholder="(min)">
+    </div>
 
     <button onclick="calculateEnergy()">Calculate</button>
+    <!-- Pulsante per Advanced Settings (arancione) -->
+    <button class="advanced-btn" onclick="openAdvancedSettings()" title="Advanced Settings"></button>
+    <!-- Pulsante per Heating Profile Settings (blu) -->
+    <button class="profile-btn" onclick="toggleProfileOptions()" title="Heating Profile"></button>
   </div>
 
+  <!-- Sezione dei risultati -->
   <div id="results" class="container">
     <h2>Results</h2>
     <p id="output"></p>
@@ -112,91 +214,239 @@
     <div class="chart-container">
       <canvas id="tempChart" width="300" height="200"></canvas>
       <div class="export-buttons">
-        <button class="export-btn" onclick="exportChartData('tempChart')" title="Esporta dati CSV"></button>
+        <button class="export-btn" onclick="exportChartData('tempChart')" title="Export CSV"></button>
       </div>
     </div>
     <!-- Grafico dell'Efficienza -->
     <div class="chart-container">
       <canvas id="effChart" width="300" height="200"></canvas>
       <div class="export-buttons">
-        <button class="export-btn" onclick="exportChartData('effChart')" title="Esporta dati CSV"></button>
+        <button class="export-btn" onclick="exportChartData('effChart')" title="Export CSV"></button>
       </div>
+    </div>
+    <!-- Grafico dell'Irraggiamento -->
+    <div id="irradianceContainer" class="chart-container" style="display:none;">
+      <canvas id="irradianceChart" width="300" height="200"></canvas>
+      <!-- Finestra per visualizzare il luogo e le coordinate -->
+      <div id="locationInfo"></div>
     </div>
     <button onclick="resetForm()">Close</button>
   </div>
 
+  <!-- Modal per Advanced Settings -->
+  <div id="advancedModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Advanced Settings</h3>
+      <label>Città:</label>
+      <input type="text" id="adv_city" placeholder="(es. Milano)">
+      <label>Data:</label>
+      <input type="date" id="adv_date">
+      <label>Ora di inizio (0-23):</label>
+      <input type="number" id="adv_startHour" placeholder="(es. 7)" min="0" max="23">
+      <label>Ora di fine (0-23):</label>
+      <input type="number" id="adv_endHour" placeholder="(es. 19)" min="0" max="23">
+      <div style="margin-top:10px;">
+        <button onclick="saveAdvancedSettings()">Save</button>
+        <button onclick="closeAdvancedSettings()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Variabili globali
+    let advancedSettingsUsed = false;
+    let advancedSettings = {};
+    // heatingProfile: "linear" oppure "stepped"
+    let heatingProfile = "linear";
+
+    function openAdvancedSettings() {
+      document.getElementById("advancedModal").style.display = "flex";
+    }
+    function closeAdvancedSettings() {
+      document.getElementById("advancedModal").style.display = "none";
+    }
+    async function saveAdvancedSettings() {
+      let city = document.getElementById("adv_city").value.trim();
+      let date = document.getElementById("adv_date").value;
+      let startHour = parseInt(document.getElementById("adv_startHour").value);
+      let endHour = parseInt(document.getElementById("adv_endHour").value);
+      
+      if (!city || !date || isNaN(startHour) || isNaN(endHour) || endHour <= startHour) {
+        alert("Please enter valid values for Advanced Settings.");
+        return;
+      }
+      
+      try {
+        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+        let data = await response.json();
+        if (data.length === 0) {
+          alert("City not found. Please try again.");
+          return;
+        }
+        let lat = parseFloat(data[0].lat);
+        let lon = parseFloat(data[0].lon);
+        advancedSettings = { city, lat, lon, date, startHour, endHour };
+        advancedSettingsUsed = true;
+        // Nascondi il campo "Length" nella pagina di input
+        document.getElementById("day_length_container").style.display = "none";
+        closeAdvancedSettings();
+      } catch (error) {
+        alert("Geocoding error. Please try again.");
+        console.error(error);
+      }
+    }
+
+    // Funzione per mostrare/nascondere i campi del profilo di riscaldamento
+    function toggleProfileOptions() {
+      let div = document.getElementById("profileOptions");
+      if (div.style.display === "none" || div.style.display === "") {
+        div.style.display = "block";
+        heatingProfile = "stepped";
+      } else {
+        div.style.display = "none";
+        heatingProfile = "linear";
+      }
+    }
+
     function calculateEnergy() {
-      // Legge i valori inseriti dall'utente
+      // Lettura dei dati base
       let area = parseFloat(document.getElementById("area").value);
-      let efficiency = parseFloat(document.getElementById("efficiency").value) / 100;
+      let efficiencyInput = parseFloat(document.getElementById("efficiency").value) / 100;
       let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
       let heat_rate = parseFloat(document.getElementById("heat_rate").value);
       let temp_start = parseFloat(document.getElementById("temp_start").value);
       let temp_end = parseFloat(document.getElementById("temp_end").value);
       let irradiance = parseFloat(document.getElementById("irradiance").value);
-      let day_length = parseFloat(document.getElementById("day_length").value);
+      let day_lengthInput = parseFloat(document.getElementById("day_length").value);
 
-      // Calcolo del tempo di riscaldamento (in minuti)
-      let delta_T = temp_end - temp_start;
-      let heat_time = delta_T / heat_rate;
+      if (isNaN(area) || isNaN(efficiencyInput) || isNaN(eff_decrease) || isNaN(heat_rate) ||
+          isNaN(temp_start) || isNaN(temp_end) || isNaN(irradiance) || (!advancedSettingsUsed && isNaN(day_lengthInput))) {
+        alert("Please enter all required values correctly.");
+        return;
+      }
 
-      // Conversione dell'irradianza in W/m²
-      let I = (irradiance / day_length) * 1000;
+      // Variabili per advanced settings o day length
+      let totalMinutes, simulationStart;
+      let I_constant; // in W/m²
+      if (advancedSettingsUsed) {
+        let { startHour, endHour, date, lat, lon } = advancedSettings;
+        totalMinutes = (endHour - startHour) * 60;
+        simulationStart = new Date(date + " " + startHour + ":00");
+        let sunTimes = SunCalc.getTimes(new Date(date), lat, lon);
+        let illumHours = (sunTimes.sunset - sunTimes.sunrise) / (1000 * 3600);
+        I_constant = (irradiance / illumHours) * 1000;
+      } else {
+        totalMinutes = day_lengthInput * 60;
+        simulationStart = null;
+        I_constant = (irradiance / day_lengthInput) * 1000;
+      }
 
-      // Calcolo dell'efficienza durante il riscaldamento
-      let eff_initial = efficiency;
-      let eff_final = efficiency * (1 - eff_decrease * delta_T);
-      eff_final = Math.max(eff_final, 0);
+      // Dichiarazione in scope più ampio di fullDayData, simulationData e simColors
+      let fullDayData = [];
+      let simulationData;
+      let simColors;
+      // Arrays per grafici
+      let timeLabels = [], tempData = [], effData = [], irradianceArray = [];
+      let energyValues = {};  // Per salvare le energie in ciascuna fase
 
-      // Efficienza media in fase di riscaldamento
-      let avg_efficiency_heating = (eff_initial + eff_final) / 2;
-      let energy_heat = I * area * avg_efficiency_heating * (heat_time / 60);
+      if (heatingProfile === "linear") {
+        // Calcolo lineare (come prima)
+        let delta_T = temp_end - temp_start;
+        let heat_time = delta_T / heat_rate;
+        for (let t = 0; t <= totalMinutes; t++) {
+          timeLabels.push(t);
+          let currentTemp = (t <= heat_time) ? temp_start + (delta_T * t / heat_time) : temp_end;
+          tempData.push(currentTemp);
+          let currentEff = Math.max(efficiencyInput * (1 - eff_decrease * (currentTemp - temp_start)), 0);
+          effData.push(currentEff * 100);
+          // Calcolo dell'energia per minuto
+          let minuteEnergy = I_constant * area * currentEff / 60;
+          irradianceArray[t] = I_constant;  // per il grafico, nel caso non advancedSettings
+          energyValues.total = (energyValues.total || 0) + minuteEnergy;
+        }
+        var resultText = `
+          <strong>Heating time:</strong> ${heat_time.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} min<br>
+          <strong>Total energy:</strong> ${energyValues.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh (${(energyValues.total/1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh)
+        `;
+      } else if (heatingProfile === "stepped") {
+        // Lettura dei nuovi campi
+        let plateau_temp = parseFloat(document.getElementById("plateau_temp").value);
+        let plateau_duration = parseFloat(document.getElementById("plateau_duration").value);
+        if (isNaN(plateau_temp) || isNaN(plateau_duration)) {
+          alert("Please enter values for Intermediate plateau temperature and duration.");
+          return;
+        }
+        // Calcolo delle fasi:
+        let t1 = (plateau_temp - temp_start) / heat_rate;
+        let t2 = (temp_end - plateau_temp) / heat_rate;
+        let phaseSum = t1 + plateau_duration + t2;
+        if (phaseSum > totalMinutes) {
+          alert("The total simulation time is shorter than the sum of the phases. Please check your inputs.");
+          return;
+        }
+        let t4 = totalMinutes - phaseSum;
+        let energyHeating1 = 0, energyPlateau1 = 0, energyHeating2 = 0, energyPlateau2 = 0;
+        for (let t = 0; t <= totalMinutes; t++) {
+          timeLabels.push(t);
+          let currentTemp = temp_start;
+          if (t < t1) {
+            currentTemp = temp_start + (plateau_temp - temp_start) * (t / t1);
+          } else if (t < t1 + plateau_duration) {
+            currentTemp = plateau_temp;
+          } else if (t < t1 + plateau_duration + t2) {
+            currentTemp = plateau_temp + (temp_end - plateau_temp) * ((t - t1 - plateau_duration) / t2);
+          } else {
+            currentTemp = temp_end;
+          }
+          tempData.push(currentTemp);
+          let currentEff = Math.max(efficiencyInput * (1 - eff_decrease * (currentTemp - temp_start)), 0);
+          effData.push(currentEff * 100);
+          let minuteEnergy = I_constant * area * currentEff / 60;
+          if (t < t1) {
+            energyHeating1 += minuteEnergy;
+          } else if (t < t1 + plateau_duration) {
+            energyPlateau1 += minuteEnergy;
+          } else if (t < t1 + plateau_duration + t2) {
+            energyHeating2 += minuteEnergy;
+          } else {
+            energyPlateau2 += minuteEnergy;
+          }
+        }
+        energyValues.total = energyHeating1 + energyPlateau1 + energyHeating2 + energyPlateau2;
+        var resultText = `
+          <strong>First heating energy:</strong> ${energyHeating1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
+          <strong>First plateau energy:</strong> ${energyPlateau1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
+          <strong>Second heating energy:</strong> ${energyHeating2.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
+          <strong>Second plateau energy:</strong> ${energyPlateau2.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
+          <strong>Total energy:</strong> ${energyValues.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh (${(energyValues.total/1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh)
+        `;
+      }
 
-      // Calcolo energia fase plateau
-      let totalMinutes = day_length * 60;
-      let plateau_time = totalMinutes - heat_time;
-      let energy_plateau = I * area * eff_final * (plateau_time / 60);
-
-      // Energia totale prodotta
-      let total_energy_Wh = energy_heat + energy_plateau;
-      let total_energy_kWh = total_energy_Wh / 1000;
-
-      // Visualizza i risultati testuali
-      let resultText = `
-        <strong>Heating time:</strong> ${heat_time.toFixed(2)} min<br>
-        <strong>Energy during heating:</strong> ${energy_heat.toFixed(2)} Wh<br>
-        <strong>Energy at plateau:</strong> ${energy_plateau.toFixed(2)} Wh<br>
-        <strong>Total energy:</strong> ${total_energy_Wh.toFixed(2)} Wh (${total_energy_kWh.toFixed(2)} kWh)
-      `;
       document.getElementById("output").innerHTML = resultText;
 
-      // Calcola i dati per i grafici (simulazione minuto per minuto)
-      let timeLabels = [];
-      let tempData = [];
-      let effData = [];
-      for (let t = 0; t <= totalMinutes; t++) {
-        timeLabels.push(t);
-        if (t <= heat_time) {
-          let temp = temp_start + (delta_T * t / heat_time);
-          tempData.push(temp);
-          let eff = eff_initial - ((eff_initial - eff_final) * (t / heat_time));
-          effData.push(eff * 100);
-        } else {
-          tempData.push(temp_end);
-          effData.push(eff_final * 100);
+      // Costruzione della curva di irradiance per l'intera giornata
+      if (advancedSettingsUsed) {
+        let baseDate = new Date(advancedSettings.date + " 00:00");
+        for (let m = 0; m <= 1440; m++) {
+          let currentTime = new Date(baseDate.getTime() + m * 60000);
+          let pos = SunCalc.getPosition(currentTime, advancedSettings.lat, advancedSettings.lon);
+          let factor = Math.max(Math.sin(pos.altitude), 0);
+          fullDayData.push({ x: m, y: I_constant * factor });
+        }
+        let simStart = advancedSettings.startHour * 60;
+        let simEnd = advancedSettings.endHour * 60;
+        simulationData = fullDayData.filter(point => point.x >= simStart && point.x <= simEnd);
+        simColors = simulationData.map(point => point.y > 0 ? "yellow" : "purple");
+      } else {
+        for (let m = 0; m <= totalMinutes; m++) {
+          fullDayData.push({ x: m, y: I_constant });
         }
       }
 
-      // Crea array di punti dati in formato {x: minuti, y: valore}
+      // Grafico della Temperatura
       let tempDataPoints = timeLabels.map((t, i) => ({ x: t, y: tempData[i] }));
-      let effDataPoints = timeLabels.map((t, i) => ({ x: t, y: effData[i] }));
-
-      // Creazione del grafico della Temperatura
       let ctxTemp = document.getElementById('tempChart').getContext('2d');
-      if (window.tempChart instanceof Chart) {
-        window.tempChart.destroy();
-      }
+      if (window.tempChart instanceof Chart) { window.tempChart.destroy(); }
       window.tempChart = new Chart(ctxTemp, {
         type: 'line',
         data: {
@@ -215,26 +465,23 @@
               type: 'linear',
               title: { display: true, text: 'Time (hours)' },
               min: 0,
-              max: day_length * 60,
+              max: totalMinutes,
               ticks: {
                 stepSize: 60,
-                callback: function(value) {
-                  return value / 60; // visualizza il tempo in ore
-                }
+                callback: value => value / 60,
+                maxRotation: 0,
+                minRotation: 0
               }
             },
-            y: {
-              title: { display: true, text: 'Temperature (°C)' }
-            }
+            y: { title: { display: true, text: 'Temperature (°C)' } }
           }
         }
       });
 
-      // Creazione del grafico dell'Efficienza
+      // Grafico dell'Efficienza
+      let effDataPoints = timeLabels.map((t, i) => ({ x: t, y: effData[i] }));
       let ctxEff = document.getElementById('effChart').getContext('2d');
-      if (window.effChart instanceof Chart) {
-        window.effChart.destroy();
-      }
+      if (window.effChart instanceof Chart) { window.effChart.destroy(); }
       window.effChart = new Chart(ctxEff, {
         type: 'line',
         data: {
@@ -253,42 +500,90 @@
               type: 'linear',
               title: { display: true, text: 'Time (hours)' },
               min: 0,
-              max: day_length * 60,
+              max: totalMinutes,
               ticks: {
                 stepSize: 60,
-                callback: function(value) {
-                  return value / 60;
-                }
+                callback: value => value / 60
               }
             },
-            y: {
-              title: { display: true, text: 'Efficiency (%)' }
-            }
+            y: { title: { display: true, text: 'Efficiency (%)' } }
           }
         }
       });
 
-      // Mostra la sezione dei risultati e nasconde quella degli input
+      // Grafico dell'Irradiance
+      if (advancedSettingsUsed) {
+        document.getElementById("irradianceContainer").style.display = "block";
+        let ctxIrr = document.getElementById('irradianceChart').getContext('2d');
+        if (window.irradianceChart instanceof Chart) { window.irradianceChart.destroy(); }
+        window.irradianceChart = new Chart(ctxIrr, {
+          type: 'line',
+          data: {
+            datasets: [
+              {
+                label: 'Irradiance (W/m²) - Full Day',
+                data: fullDayData,
+                borderColor: 'lightgrey',
+                backgroundColor: 'rgba(211,211,211,0.3)',
+                fill: false,
+                pointRadius: 0,
+                tension: 0.1
+              },
+              {
+                label: 'Simulation Period',
+                data: simulationData,
+                type: 'scatter',
+                pointBackgroundColor: simColors,
+                pointRadius: 5,
+                showLine: true,
+                borderColor: 'yellow',
+                fill: false,
+                tension: 0.1
+              }
+            ]
+          },
+          options: {
+            scales: {
+              x: {
+                type: 'linear',
+                title: { display: true, text: 'Time (hours)' },
+                min: 0,
+                max: 1440,
+                ticks: {
+                  stepSize: 60,
+                  callback: value => value / 60,
+                  maxRotation: 0,
+                  minRotation: 0
+                }
+              },
+              y: {
+                title: { display: true, text: 'Irradiance (W/m²)' }
+              }
+            }
+          }
+        });
+        document.getElementById("locationInfo").innerHTML = `<strong>Location:</strong> ${advancedSettings.city} (lat: ${advancedSettings.lat.toFixed(4)}, lon: ${advancedSettings.lon.toFixed(4)})`;
+      } else {
+        document.getElementById("irradianceContainer").style.display = "none";
+      }
+
       document.getElementById("input-container").style.display = "none";
       document.getElementById("results").style.display = "block";
     }
 
-    // Funzione per esportare i dati del grafico in formato CSV usando ";" come delimitatore
     function exportChartData(chartType) {
       let chart;
-      if(chartType === 'tempChart'){
+      if (chartType === 'tempChart') {
         chart = window.tempChart;
-      } else if(chartType === 'effChart'){
+      } else if (chartType === 'effChart') {
         chart = window.effChart;
       } else {
         return;
       }
-      // Nota: per la prima riga usiamo ";" come delimitatore
       let csvContent = "data:text/csv;charset=utf-8,Time (min);Value\n";
-      // I dati sono in formato {x, y} con x in minuti. Per y, se necessario, puoi usare toLocaleString per formattare i decimali.
       let dataPoints = chart.data.datasets[0].data;
-      for(let i = 0; i < dataPoints.length; i++){
-        csvContent += dataPoints[i].x + ";" + dataPoints[i].y + "\n";
+      for (let i = 0; i < dataPoints.length; i++) {
+        csvContent += dataPoints[i].x + ";" + dataPoints[i].y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "\n";
       }
       let encodedUri = encodeURI(csvContent);
       let link = document.createElement("a");
@@ -308,9 +603,20 @@
       document.getElementById("temp_end").value = "";
       document.getElementById("irradiance").value = "";
       document.getElementById("day_length").value = "";
-      
+      document.getElementById("day_length_container").style.display = "block";
+      document.getElementById("profileOptions").style.display = "none";
+      document.getElementById("plateau_temp").value = "";
+      document.getElementById("plateau_duration").value = "";
+      heatingProfile = "linear";
+      advancedSettingsUsed = false;
+      advancedSettings = {};
+      document.getElementById("adv_city").value = "";
+      document.getElementById("adv_date").value = "";
+      document.getElementById("adv_startHour").value = "";
+      document.getElementById("adv_endHour").value = "";
       document.getElementById("input-container").style.display = "block";
       document.getElementById("results").style.display = "none";
+      document.getElementById("irradianceContainer").style.display = "none";
     }
 
     window.onload = resetForm;
