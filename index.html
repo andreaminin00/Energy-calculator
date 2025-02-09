@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Il meta tag viewport è fondamentale per il responsive design -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Solar Panel Energy Calculator</title>
   <!-- Google Font -->
@@ -13,13 +14,15 @@
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    /* General Styles */
+    /* ------------------- GENERAL STYLES ------------------- */
     body {
       background-color: black;
       color: white;
       font-family: 'Quicksand', sans-serif;
       font-size: 16px;
       text-align: center;
+      margin: 0;
+      padding: 0;
     }
     .container {
       margin: 50px auto;
@@ -30,7 +33,7 @@
       background-color: #222;
       position: relative;
     }
-    /* Input rows: etichette a riga intera e input full width, tutti con bordi stondati */
+    /* ------------------- INPUT ROWS ------------------- */
     .input-row {
       margin: 10px 0;
       text-align: left;
@@ -50,7 +53,7 @@
       border: 1px solid white;
       border-radius: 5px;
     }
-    /* Pulsanti principali della homepage (Advanced Settings e Heating Profile) */
+    /* ------------------- PULSANTI PRINCIPALI ------------------- */
     .advanced-btn, .profile-btn {
       width: 30px;
       height: 30px;
@@ -77,14 +80,17 @@
     .profile-btn:hover {
       background-color: #0000FF;
     }
-    /* Pulsanti per testo (ad es. "Calculate", "Save", "Cancel") */
+    /* ------------------- BOTTONI CON SCRITTA ------------------- */
     button:not(.advanced-btn):not(.profile-btn):not(.small-green-btn):not(.toggle-back-btn):not(.export-btn) {
       background-color: #333;
       color: white;
       border: 1px solid white;
       border-radius: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
     }
-    /* Chart container */
+    /* ------------------- CHARTS ------------------- */
     .chart-container {
       margin-top: 20px;
     }
@@ -106,11 +112,13 @@
     .export-btn:hover {
       background-color: #ffa500;
     }
-    /* Modal Styles (Advanced Settings and Clock) */
+    /* ------------------- MODAL ------------------- */
     .modal-overlay {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0,0,0,0.7);
       display: none;
       align-items: center;
@@ -136,8 +144,9 @@
       background-color: #333;
       color: white;
       border: 1px solid white;
+      transition: all 0.3s ease;
     }
-    /* Advanced Settings Modal: input rows con label su una riga e input full width */
+    /* ------------------- MODAL: INPUT ROWS ------------------- */
     .modal .input-row {
       text-align: left;
       width: 100%;
@@ -157,7 +166,8 @@
       border: 1px solid white;
       border-radius: 5px;
     }
-    /* Piccoli pulsanti verdi: usa un verde più scuro (es. #00A550) */
+    /* ------------------- PICCOLI PULSANTI VERDI ------------------- */
+    /* Colore verde elettrico tendente al verde scuro: #00A550 */
     .small-green-btn,
     .toggle-back-btn {
       width: 12px;
@@ -176,7 +186,7 @@
     .toggle-back-btn:hover {
       background-color: #00A550;
     }
-    /* Advanced Settings: per il campo "City:" ora la label contiene il pulsante (allineato a destra) */
+    /* ------------------- ADVANCED SETTINGS: CAMPO CITY ------------------- */
     #locationInputContainer {
       display: block;
       width: 100%;
@@ -187,12 +197,12 @@
       width: 100%;
       margin-bottom: 5px;
     }
-    /* Coordinate inputs: sono visibili in modalità coordinate */
+    /* ------------------- COORDINATE INPUTS ------------------- */
     #coordinateInputs {
       display: none;
       width: 100%;
     }
-    /* Clock Modal Specific Styles */
+    /* ------------------- CLOCK MODAL ------------------- */
     #clockModal .modal {
       width: 250px;
       text-align: center;
@@ -202,10 +212,40 @@
       border-radius: 50%;
       margin: 10px 0;
     }
-    /* For autofill: mantenere sfondo scuro e testo bianco */
+    /* ------------------- AUTOFILL ------------------- */
     input:-webkit-autofill {
       -webkit-box-shadow: 0 0 0 30px #333 inset !important;
       -webkit-text-fill-color: white !important;
+    }
+    /* ------------------- MEDIA QUERIES PER MOBILE ------------------- */
+    @media screen and (max-width: 480px) {
+      .container {
+        width: 95%;
+        margin: 10px auto;
+        padding: 10px;
+      }
+      .input-row input,
+      .modal .input-row input {
+        font-size: 14px;
+        padding: 6px;
+      }
+      .input-row label,
+      .modal .input-row label {
+        font-size: 14px;
+      }
+      .advanced-btn, .profile-btn {
+        width: 24px;
+        height: 24px;
+      }
+      .export-btn {
+        width: 24px;
+        height: 24px;
+      }
+      /* I canvas dei grafici occupano il 100% della larghezza disponibile */
+      .chart-container canvas {
+        width: 100% !important;
+        height: auto !important;
+      }
     }
   </style>
 </head>
@@ -242,7 +282,7 @@
       <label for="irradiance">Solar Irradiance (kWh/m²):</label>
       <input type="number" id="irradiance" placeholder="(kWh/m²)">
     </div>
-    <!-- Day length (mostrato se non si usano gli Advanced Settings) -->
+    <!-- Day length: visibile se non si usano gli Advanced Settings -->
     <div class="input-row" id="day_length_container">
       <label for="day_length">Length (hours):</label>
       <input type="number" id="day_length" placeholder="(hours)">
@@ -291,7 +331,7 @@
   <div id="advancedModal" class="modal-overlay">
     <div class="modal">
       <h3>Advanced Settings</h3>
-      <!-- Riga per la localizzazione: etichetta con pulsante verde all'interno -->
+      <!-- Riga per la localizzazione: etichetta con pulsante verde per toggle -->
       <div class="input-row" id="locationInputContainer">
         <label for="adv_city">City: 
           <button id="toggleLocationBtn" class="small-green-btn" onclick="toggleLocationMode()" title="Toggle to Coordinates"></button>
@@ -347,13 +387,13 @@
   </div>
 
   <script>
-    // Variabili globali
+    // Global variables
     let advancedSettingsUsed = false;
     let advancedSettings = {};
-    let heatingProfile = "linear"; // "linear" o "stepped"
-    let currentClockTarget = ""; // "start" o "end"
+    let heatingProfile = "linear"; // "linear" or "stepped"
+    let currentClockTarget = ""; // "start" or "end"
 
-    // Funzioni per il Modal degli Advanced Settings
+    // Advanced Settings Modal functions
     function openAdvancedSettings() {
       document.getElementById("advancedModal").style.display = "flex";
     }
@@ -402,7 +442,7 @@
       document.getElementById("day_length_container").style.display = "none";
       closeAdvancedSettings();
     }
-    // Toggle alla modalità coordinate (da inserimento a parole)
+    // Toggle to coordinate mode
     function toggleLocationMode() {
       let coordDiv = document.getElementById("coordinateInputs");
       let locationInput = document.getElementById("locationInputContainer");
@@ -414,14 +454,14 @@
         locationInput.style.display = "block";
       }
     }
-    // Toggle per tornare alla modalità City dai campi di coordinate
+    // Toggle back to City mode from coordinate mode
     function toggleLocationModeBack() {
       let coordDiv = document.getElementById("coordinateInputs");
       let locationInput = document.getElementById("locationInputContainer");
       coordDiv.style.display = "none";
       locationInput.style.display = "block";
     }
-    // Toggle per il profilo di riscaldamento
+    // Toggle heating profile options
     function toggleProfileOptions() {
       let div = document.getElementById("profileOptions");
       if (div.style.display === "none" || div.style.display === "") {
@@ -432,7 +472,7 @@
         heatingProfile = "linear";
       }
     }
-    // Funzioni per l'orologio analogico
+    // Clock modal functions
     function openClockModal(target) {
       currentClockTarget = target;
       document.getElementById("clockModal").style.display = "flex";
@@ -488,7 +528,7 @@
       }
       closeClockModal();
     });
-    // Calcola l'energia e genera i grafici
+    // Calculate energy and generate charts
     function calculateEnergy() {
       let area = parseFloat(document.getElementById("area").value);
       let efficiencyInput = parseFloat(document.getElementById("efficiency").value) / 100;
@@ -588,7 +628,6 @@
            <strong>Total plateau energy:</strong> ${totalPlateauEnergy.toFixed(2)} Wh (${(totalPlateauEnergy/1000).toFixed(2)} kWh)<br>
            <strong>Total energy:</strong> ${energyValues.total.toFixed(2)} Wh (${(energyValues.total/1000).toFixed(2)} kWh)`;
       }
-      // Curva di irradiance (asse x in ore da 0 a 24)
       if (advancedSettingsUsed) {
         let baseDate = new Date(advancedSettings.date + " 00:00");
         for (let m = 0; m <= 1440; m++) {
@@ -606,7 +645,6 @@
           fullDayData.push({ x: m/60, y: I_constant });
         }
       }
-      // Grafico della Temperatura
       let tempDataPoints = timeLabels.map((t, i) => ({ x: t, y: tempData[i] }));
       let ctxTemp = document.getElementById('tempChart').getContext('2d');
       if (window.tempChart instanceof Chart) { window.tempChart.destroy(); }
@@ -645,7 +683,6 @@
           }
         }
       });
-      // Grafico dell'Efficienza
       let effDataPoints = timeLabels.map((t, i) => ({ x: t, y: effData[i] }));
       let ctxEff = document.getElementById('effChart').getContext('2d');
       if (window.effChart instanceof Chart) { window.effChart.destroy(); }
@@ -684,7 +721,6 @@
           }
         }
       });
-      // Grafico dell'Irradiance
       if (advancedSettingsUsed) {
         document.getElementById("irradianceContainer").style.display = "block";
         let ctxIrr = document.getElementById('irradianceChart').getContext('2d');
@@ -746,7 +782,6 @@
       document.getElementById("input-container").style.display = "none";
       document.getElementById("results").style.display = "block";
     }
-    // Esporta i dati del grafico in CSV
     function exportChartData(chartType) {
       let chart;
       if (chartType === 'tempChart') { chart = window.tempChart; }
@@ -765,7 +800,6 @@
       link.click();
       document.body.removeChild(link);
     }
-    // Salva in PDF (uno per pagina, dimensioni 180x120 mm per grafico)
     function savePDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -778,7 +812,7 @@
       if (advancedSettingsUsed) {
         let latInput = document.getElementById("adv_lat").value;
         let lonInput = document.getElementById("adv_lon").value;
-        if(latInput && lonInput) {
+        if (latInput && lonInput) {
           doc.text(`Coordinates: lat = ${latInput}, lon = ${lonInput}`, margin, y);
         } else {
           doc.text(`City: ${document.getElementById("adv_city").value}`, margin, y);
@@ -810,9 +844,9 @@
       doc.text("Results:", margin, y);
       y += 7;
       resultsLines.forEach(line => {
-          doc.text(line, margin, y);
-          y += 7;
-          if (y > 270) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y);
+        y += 7;
+        if (y > 270) { doc.addPage(); y = margin; }
       });
       let tempCanvas = document.getElementById("tempChart");
       let tempImgData = tempCanvas.toDataURL("image/png", 1.0);
@@ -825,11 +859,11 @@
       doc.text("Efficiency Chart", margin, margin);
       doc.addImage(effImgData, "PNG", margin, margin + 10, 180, 120);
       if (advancedSettingsUsed && document.getElementById("irradianceContainer").style.display !== "none") {
-          let irrCanvas = document.getElementById("irradianceChart");
-          let irrImgData = irrCanvas.toDataURL("image/png", 1.0);
-          doc.addPage();
-          doc.text("Irradiance Chart", margin, margin);
-          doc.addImage(irrImgData, "PNG", margin, margin + 10, 180, 120);
+        let irrCanvas = document.getElementById("irradianceChart");
+        let irrImgData = irrCanvas.toDataURL("image/png", 1.0);
+        doc.addPage();
+        doc.text("Irradiance Chart", margin, margin);
+        doc.addImage(irrImgData, "PNG", margin, margin + 10, 180, 120);
       }
       doc.save("solar_calculator_results.pdf");
     }
@@ -864,6 +898,39 @@
     }
     window.onload = resetForm;
   </script>
+
+  <!-- ------------------- MEDIA QUERIES PER MOBILE ------------------- -->
+  <style>
+    @media screen and (max-width: 480px) {
+      .container {
+        width: 95%;
+        margin: 10px auto;
+        padding: 10px;
+      }
+      .input-row input,
+      .modal .input-row input {
+        font-size: 14px;
+        padding: 6px;
+      }
+      .input-row label,
+      .modal .input-row label {
+        font-size: 14px;
+      }
+      .advanced-btn, .profile-btn {
+        width: 24px;
+        height: 24px;
+      }
+      .export-btn {
+        width: 24px;
+        height: 24px;
+      }
+      /* I canvas dei grafici occupano la larghezza completa */
+      .chart-container canvas {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
+  </style>
 
 </body>
 </html>
