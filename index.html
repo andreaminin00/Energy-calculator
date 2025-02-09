@@ -1,16 +1,19 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Solar Panel Energy Calculator</title>
-  <!-- Inclusione del font Quicksand -->
+  <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
-  <!-- Inclusione di Chart.js tramite CDN -->
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Inclusione della libreria SunCalc per la posizione solare -->
+  <!-- SunCalc for solar position calculations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
+    /* General Styles */
     body {
       background-color: black;
       color: white;
@@ -27,47 +30,64 @@
       background-color: #222;
       position: relative;
     }
-    input, select {
-      width: 90%;
-      padding: 5px;
+    /* Input rows: etichette a riga intera e input full width, tutti con bordi stondati */
+    .input-row {
       margin: 10px 0;
+      text-align: left;
+      width: 100%;
+    }
+    .input-row label {
+      display: block;
+      width: 100%;
+      margin-bottom: 5px;
+    }
+    .input-row input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
       background-color: #333;
       color: white;
       border: 1px solid white;
-    }
-    button {
-      background-color: gray;
-      color: white;
-      border: none;
-      padding: 10px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    button:hover {
-      background-color: white;
-      color: black;
-    }
-    #results {
-      display: none;
-    }
-    /* Container per il campo Length */
-    #day_length_container {
-      margin: 10px 0;
-    }
-    /* Container per i campi del profilo di riscaldamento (stepped) */
-    #profileOptions {
-      margin: 10px 0;
-      display: none;
-      border: 1px solid #0000FF;
-      padding: 10px;
       border-radius: 5px;
-      background-color: #111;
     }
-    /* Stile per i grafici */
+    /* Pulsanti principali della homepage (Advanced Settings e Heating Profile) */
+    .advanced-btn, .profile-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid;
+      position: absolute;
+    }
+    .advanced-btn {
+      border-color: #cc6600;
+      top: 10px;
+      right: 10px;
+    }
+    .profile-btn {
+      border-color: #0000FF;
+      top: 50px;
+      right: 10px;
+    }
+    .advanced-btn:hover {
+      background-color: #cc6600;
+    }
+    .profile-btn:hover {
+      background-color: #0000FF;
+    }
+    /* Pulsanti per testo (ad es. "Calculate", "Save", "Cancel") */
+    button:not(.advanced-btn):not(.profile-btn):not(.small-green-btn):not(.toggle-back-btn):not(.export-btn) {
+      background-color: #333;
+      color: white;
+      border: 1px solid white;
+      border-radius: 5px;
+    }
+    /* Chart container */
     .chart-container {
       margin-top: 20px;
     }
-    /* Pulsante CSV (cerchio arancione chiaro) */
     .export-buttons {
       margin-top: 10px;
       display: flex;
@@ -85,45 +105,8 @@
     }
     .export-btn:hover {
       background-color: #ffa500;
-      box-shadow: 0 0 10px #ffa500;
     }
-    /* Pulsante Advanced Settings (arancione) */
-    .advanced-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      border: 2px solid #cc6600;
-      background-color: transparent;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0;
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-    .advanced-btn:hover {
-      background-color: #cc6600;
-      box-shadow: 0 0 10px #cc6600;
-    }
-    /* Pulsante Profile Settings (blu) spostato sotto quello arancione */
-    .profile-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      border: 2px solid #0000FF;
-      background-color: transparent;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0;
-      position: absolute;
-      top: 50px; /* spostato sotto l'arancione */
-      right: 10px; /* allineato orizzontalmente con l'arancione */
-    }
-    .profile-btn:hover {
-      background-color: #0000FF;
-      box-shadow: 0 0 10px #0000FF;
-    }
-    /* Modal per Advanced Settings */
+    /* Modal Styles (Advanced Settings and Clock) */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -140,6 +123,7 @@
       border: 1px solid white;
       border-radius: 10px;
       width: 300px;
+      text-align: center;
     }
     .modal h3 {
       margin-top: 0;
@@ -147,104 +131,205 @@
     .modal button {
       margin: 5px;
       padding: 5px 10px;
-    }
-    /* Stile per la finestra delle coordinate in Advanced Settings */
-    #locationInfo {
-      margin-top: 10px;
-      padding: 5px;
-      border: 1px solid #ffa500;
+      cursor: pointer;
       border-radius: 5px;
-      background-color: #111;
-      font-size: 14px;
+      background-color: #333;
+      color: white;
+      border: 1px solid white;
+    }
+    /* Advanced Settings Modal: input rows con label su una riga e input full width */
+    .modal .input-row {
+      text-align: left;
+      width: 100%;
+      margin: 8px 0;
+    }
+    .modal .input-row label {
+      display: block;
+      width: 100%;
+      margin-bottom: 5px;
+    }
+    .modal .input-row input {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+      background-color: #333;
+      color: white;
+      border: 1px solid white;
+      border-radius: 5px;
+    }
+    /* Piccoli pulsanti verdi: usa un verde più scuro (es. #00A550) */
+    .small-green-btn,
+    .toggle-back-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: transparent;
+      border: 1px solid #00A550;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 5px;
+      font-size: 0;
+    }
+    .small-green-btn:hover,
+    .toggle-back-btn:hover {
+      background-color: #00A550;
+    }
+    /* Advanced Settings: per il campo "City:" ora la label contiene il pulsante (allineato a destra) */
+    #locationInputContainer {
+      display: block;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    #locationInputContainer label {
+      display: block;
+      width: 100%;
+      margin-bottom: 5px;
+    }
+    /* Coordinate inputs: sono visibili in modalità coordinate */
+    #coordinateInputs {
+      display: none;
+      width: 100%;
+    }
+    /* Clock Modal Specific Styles */
+    #clockModal .modal {
+      width: 250px;
+      text-align: center;
+    }
+    #clockCanvas {
+      background: #333;
+      border-radius: 50%;
+      margin: 10px 0;
+    }
+    /* For autofill: mantenere sfondo scuro e testo bianco */
+    input:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 30px #333 inset !important;
+      -webkit-text-fill-color: white !important;
     }
   </style>
 </head>
 <body>
 
-  <!-- Sezione di input -->
+  <!-- Input Section (Homepage) -->
   <div id="input-container" class="container">
     <h2>Solar Panel Energy Calculator</h2>
-    <label>Panel area (m²):</label>
-    <input type="number" id="area" placeholder="(m²)">
-
-    <label>Nominal efficiency (%):</label>
-    <input type="number" id="efficiency" placeholder="(%)">
-
-    <label>Efficiency decrease (%/°C):</label>
-    <input type="number" id="eff_decrease" placeholder="(%/°C)">
-
-    <label>Heating rate (°C/min):</label>
-    <input type="number" id="heat_rate" placeholder="(°C/min)">
-
-    <label>Initial temperature (°C):</label>
-    <input type="number" id="temp_start" placeholder="(°C)">
-
-    <label>Final temperature (°C):</label>
-    <input type="number" id="temp_end" placeholder="(°C)">
-
-    <label>Solar irradiance (kWh/m²):</label>
-    <input type="number" id="irradiance" placeholder="(kWh/m²)">
-
-    <!-- Il campo Length verrà nascosto se si usano gli advanced settings -->
-    <div id="day_length_container">
-      <label>Length (hours):</label>
+    <div class="input-row">
+      <label for="area">Panel area (m²):</label>
+      <input type="number" id="area" placeholder="(m²)">
+    </div>
+    <div class="input-row">
+      <label for="efficiency">Nominal Efficiency (%):</label>
+      <input type="number" id="efficiency" placeholder="(%)">
+    </div>
+    <div class="input-row">
+      <label for="eff_decrease">Efficiency Drop (%/°C):</label>
+      <input type="number" id="eff_decrease" placeholder="(%/°C)">
+    </div>
+    <div class="input-row">
+      <label for="heat_rate">Heating Rate (°C/min):</label>
+      <input type="number" id="heat_rate" placeholder="(°C/min)">
+    </div>
+    <div class="input-row">
+      <label for="temp_start">Initial Temperature (°C):</label>
+      <input type="number" id="temp_start" placeholder="(°C)">
+    </div>
+    <div class="input-row">
+      <label for="temp_end">Final Temperature (°C):</label>
+      <input type="number" id="temp_end" placeholder="(°C)">
+    </div>
+    <div class="input-row">
+      <label for="irradiance">Solar Irradiance (kWh/m²):</label>
+      <input type="number" id="irradiance" placeholder="(kWh/m²)">
+    </div>
+    <!-- Day length (mostrato se non si usano gli Advanced Settings) -->
+    <div class="input-row" id="day_length_container">
+      <label for="day_length">Length (hours):</label>
       <input type="number" id="day_length" placeholder="(hours)">
     </div>
-
-    <!-- Container per i campi del profilo di riscaldamento (appaiono solo se si seleziona "stepped") -->
-    <div id="profileOptions">
-      <label>Intermediate plateau temperature (°C):</label>
+    <!-- Stepped heating profile options -->
+    <div class="input-row" id="profileOptions">
+      <label for="plateau_temp">Intermediate Plateau Temperature (°C):</label>
       <input type="number" id="plateau_temp" placeholder="(°C)">
-      <label>Intermediate plateau duration (min):</label>
+      <label for="plateau_duration">Intermediate Plateau Duration (min):</label>
       <input type="number" id="plateau_duration" placeholder="(min)">
     </div>
-
     <button onclick="calculateEnergy()">Calculate</button>
-    <!-- Pulsante per Advanced Settings (arancione) -->
+    <!-- Pulsanti principali della homepage -->
     <button class="advanced-btn" onclick="openAdvancedSettings()" title="Advanced Settings"></button>
-    <!-- Pulsante per Heating Profile Settings (blu) -->
     <button class="profile-btn" onclick="toggleProfileOptions()" title="Heating Profile"></button>
   </div>
 
-  <!-- Sezione dei risultati -->
+  <!-- Results Section -->
   <div id="results" class="container">
     <h2>Results</h2>
     <p id="output"></p>
-    <!-- Grafico della Temperatura -->
+    <!-- Temperature Chart -->
     <div class="chart-container">
       <canvas id="tempChart" width="300" height="200"></canvas>
       <div class="export-buttons">
         <button class="export-btn" onclick="exportChartData('tempChart')" title="Export CSV"></button>
       </div>
     </div>
-    <!-- Grafico dell'Efficienza -->
+    <!-- Efficiency Chart -->
     <div class="chart-container">
       <canvas id="effChart" width="300" height="200"></canvas>
       <div class="export-buttons">
         <button class="export-btn" onclick="exportChartData('effChart')" title="Export CSV"></button>
       </div>
     </div>
-    <!-- Grafico dell'Irraggiamento -->
-    <div id="irradianceContainer" class="chart-container" style="display:none;">
+    <!-- Irradiance Chart (visibile se usati gli Advanced Settings) -->
+    <div class="chart-container" id="irradianceContainer" style="display:none;">
       <canvas id="irradianceChart" width="300" height="200"></canvas>
-      <!-- Finestra per visualizzare il luogo e le coordinate -->
       <div id="locationInfo"></div>
     </div>
     <button onclick="resetForm()">Close</button>
+    <button onclick="savePDF()">Save PDF</button>
   </div>
 
-  <!-- Modal per Advanced Settings -->
+  <!-- Advanced Settings Modal -->
   <div id="advancedModal" class="modal-overlay">
     <div class="modal">
       <h3>Advanced Settings</h3>
-      <label>Città:</label>
-      <input type="text" id="adv_city" placeholder="(es. Milano)">
-      <label>Data:</label>
-      <input type="date" id="adv_date">
-      <label>Ora di inizio (0-23):</label>
-      <input type="number" id="adv_startHour" placeholder="(es. 7)" min="0" max="23">
-      <label>Ora di fine (0-23):</label>
-      <input type="number" id="adv_endHour" placeholder="(es. 19)" min="0" max="23">
+      <!-- Riga per la localizzazione: etichetta con pulsante verde all'interno -->
+      <div class="input-row" id="locationInputContainer">
+        <label for="adv_city">City: 
+          <button id="toggleLocationBtn" class="small-green-btn" onclick="toggleLocationMode()" title="Toggle to Coordinates"></button>
+        </label>
+        <input type="text" id="adv_city" placeholder="(e.g. Milan)">
+      </div>
+      <!-- Riga per le coordinate, visibile in modalità coordinate -->
+      <div id="coordinateInputs">
+        <div class="input-row">
+          <label for="adv_lat">Latitude:</label>
+          <input type="number" id="adv_lat" placeholder="(e.g. 45.4642)" step="any">
+        </div>
+        <div class="input-row">
+          <label for="adv_lon">Longitude: 
+            <button class="toggle-back-btn" onclick="toggleLocationModeBack()" title="Back to City"></button>
+          </label>
+          <input type="number" id="adv_lon" placeholder="(e.g. 9.1900)" step="any">
+        </div>
+      </div>
+      <!-- Data -->
+      <div class="input-row">
+        <label for="adv_date">Date:</label>
+        <input type="date" id="adv_date">
+      </div>
+      <!-- Start Hour con pulsante verde piccolo -->
+      <div class="input-row">
+        <label for="adv_startHour">Start Hour (0-23): 
+          <button class="small-green-btn" onclick="openClockModal('start')" title="Open Clock"></button>
+        </label>
+        <input type="number" id="adv_startHour" placeholder="(e.g. 7)" min="0" max="23">
+      </div>
+      <!-- End Hour con pulsante verde piccolo -->
+      <div class="input-row">
+        <label for="adv_endHour">End Hour (0-23): 
+          <button class="small-green-btn" onclick="openClockModal('end')" title="Open Clock"></button>
+        </label>
+        <input type="number" id="adv_endHour" placeholder="(e.g. 19)" min="0" max="23">
+      </div>
       <div style="margin-top:10px;">
         <button onclick="saveAdvancedSettings()">Save</button>
         <button onclick="closeAdvancedSettings()">Cancel</button>
@@ -252,13 +337,23 @@
     </div>
   </div>
 
+  <!-- Analog Clock Modal -->
+  <div id="clockModal" class="modal-overlay">
+    <div class="modal">
+      <h3 id="clockModalTitle">Select Hour</h3>
+      <canvas id="clockCanvas" width="200" height="200"></canvas>
+      <button onclick="closeClockModal()">Cancel</button>
+    </div>
+  </div>
+
   <script>
     // Variabili globali
     let advancedSettingsUsed = false;
     let advancedSettings = {};
-    // heatingProfile: "linear" oppure "stepped"
-    let heatingProfile = "linear";
+    let heatingProfile = "linear"; // "linear" o "stepped"
+    let currentClockTarget = ""; // "start" o "end"
 
+    // Funzioni per il Modal degli Advanced Settings
     function openAdvancedSettings() {
       document.getElementById("advancedModal").style.display = "flex";
     }
@@ -266,37 +361,67 @@
       document.getElementById("advancedModal").style.display = "none";
     }
     async function saveAdvancedSettings() {
-      let city = document.getElementById("adv_city").value.trim();
       let date = document.getElementById("adv_date").value;
       let startHour = parseInt(document.getElementById("adv_startHour").value);
       let endHour = parseInt(document.getElementById("adv_endHour").value);
-      
-      if (!city || !date || isNaN(startHour) || isNaN(endHour) || endHour <= startHour) {
-        alert("Please enter valid values for Advanced Settings.");
+      if (!date || isNaN(startHour) || isNaN(endHour) || endHour <= startHour) {
+        alert("Please enter valid date and hour values.");
         return;
       }
-      
-      try {
-        let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
-        let data = await response.json();
-        if (data.length === 0) {
-          alert("City not found. Please try again.");
+      let lat, lon, city = "";
+      if (document.getElementById("coordinateInputs").style.display === "block") {
+        lat = parseFloat(document.getElementById("adv_lat").value);
+        lon = parseFloat(document.getElementById("adv_lon").value);
+        if (isNaN(lat) || isNaN(lon)) {
+          alert("Please enter valid coordinates.");
           return;
         }
-        let lat = parseFloat(data[0].lat);
-        let lon = parseFloat(data[0].lon);
-        advancedSettings = { city, lat, lon, date, startHour, endHour };
-        advancedSettingsUsed = true;
-        // Nascondi il campo "Length" nella pagina di input
-        document.getElementById("day_length_container").style.display = "none";
-        closeAdvancedSettings();
-      } catch (error) {
-        alert("Geocoding error. Please try again.");
-        console.error(error);
+      } else {
+        city = document.getElementById("adv_city").value.trim();
+        if (!city) {
+          alert("Please enter the city name.");
+          return;
+        }
+        try {
+          let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+          let data = await response.json();
+          if (data.length === 0) {
+            alert("City not found. Please try again.");
+            return;
+          }
+          lat = parseFloat(data[0].lat);
+          lon = parseFloat(data[0].lon);
+        } catch (error) {
+          alert("Geocoding error. Please try again.");
+          console.error(error);
+          return;
+        }
+      }
+      advancedSettings = { city, lat, lon, date, startHour, endHour };
+      advancedSettingsUsed = true;
+      document.getElementById("day_length_container").style.display = "none";
+      closeAdvancedSettings();
+    }
+    // Toggle alla modalità coordinate (da inserimento a parole)
+    function toggleLocationMode() {
+      let coordDiv = document.getElementById("coordinateInputs");
+      let locationInput = document.getElementById("locationInputContainer");
+      if (coordDiv.style.display === "none" || coordDiv.style.display === "") {
+        coordDiv.style.display = "block";
+        locationInput.style.display = "none";
+      } else {
+        coordDiv.style.display = "none";
+        locationInput.style.display = "block";
       }
     }
-
-    // Funzione per mostrare/nascondere i campi del profilo di riscaldamento
+    // Toggle per tornare alla modalità City dai campi di coordinate
+    function toggleLocationModeBack() {
+      let coordDiv = document.getElementById("coordinateInputs");
+      let locationInput = document.getElementById("locationInputContainer");
+      coordDiv.style.display = "none";
+      locationInput.style.display = "block";
+    }
+    // Toggle per il profilo di riscaldamento
     function toggleProfileOptions() {
       let div = document.getElementById("profileOptions");
       if (div.style.display === "none" || div.style.display === "") {
@@ -307,9 +432,64 @@
         heatingProfile = "linear";
       }
     }
-
+    // Funzioni per l'orologio analogico
+    function openClockModal(target) {
+      currentClockTarget = target;
+      document.getElementById("clockModal").style.display = "flex";
+      document.getElementById("clockModalTitle").innerText = (target === "start") ? "Select Start Hour" : "Select End Hour";
+      drawClock();
+    }
+    function closeClockModal() {
+      document.getElementById("clockModal").style.display = "none";
+    }
+    function drawClock() {
+      const canvas = document.getElementById("clockCanvas");
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(centerX, centerY) - 10;
+      ctx.clearRect(0, 0, width, height);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.fillStyle = "#333";
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.font = "12px Arial";
+      for (let hour = 0; hour < 24; hour++) {
+          let angle = ((hour * 15) - 90) * Math.PI / 180;
+          let x = centerX + (radius - 20) * Math.cos(angle);
+          let y = centerY + (radius - 20) * Math.sin(angle);
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(hour.toString(), x, y);
+      }
+    }
+    document.getElementById("clockCanvas").addEventListener("click", function(event) {
+      const canvas = document.getElementById("clockCanvas");
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const dx = x - centerX;
+      const dy = centerY - y;
+      let angleDeg = Math.atan2(dx, dy) * 180 / Math.PI;
+      if (angleDeg < 0) angleDeg += 360;
+      let selectedHour = Math.round(angleDeg / 15) % 24;
+      if (currentClockTarget === "start") {
+          document.getElementById("adv_startHour").value = selectedHour;
+      } else if (currentClockTarget === "end") {
+          document.getElementById("adv_endHour").value = selectedHour;
+      }
+      closeClockModal();
+    });
+    // Calcola l'energia e genera i grafici
     function calculateEnergy() {
-      // Lettura dei dati base
       let area = parseFloat(document.getElementById("area").value);
       let efficiencyInput = parseFloat(document.getElementById("efficiency").value) / 100;
       let eff_decrease = parseFloat(document.getElementById("eff_decrease").value) / 100;
@@ -318,16 +498,13 @@
       let temp_end = parseFloat(document.getElementById("temp_end").value);
       let irradiance = parseFloat(document.getElementById("irradiance").value);
       let day_lengthInput = parseFloat(document.getElementById("day_length").value);
-
       if (isNaN(area) || isNaN(efficiencyInput) || isNaN(eff_decrease) || isNaN(heat_rate) ||
           isNaN(temp_start) || isNaN(temp_end) || isNaN(irradiance) || (!advancedSettingsUsed && isNaN(day_lengthInput))) {
         alert("Please enter all required values correctly.");
         return;
       }
-
-      // Variabili per advanced settings o day length
       let totalMinutes, simulationStart;
-      let I_constant; // in W/m²
+      let I_constant;
       if (advancedSettingsUsed) {
         let { startHour, endHour, date, lat, lon } = advancedSettings;
         totalMinutes = (endHour - startHour) * 60;
@@ -340,43 +517,39 @@
         simulationStart = null;
         I_constant = (irradiance / day_lengthInput) * 1000;
       }
-
-      // Dichiarazione in scope più ampio di fullDayData, simulationData e simColors
       let fullDayData = [];
       let simulationData;
       let simColors;
-      // Arrays per grafici
       let timeLabels = [], tempData = [], effData = [], irradianceArray = [];
-      let energyValues = {};  // Per salvare le energie in ciascuna fase
-
+      let energyValues = {};
       if (heatingProfile === "linear") {
-        // Calcolo lineare (come prima)
         let delta_T = temp_end - temp_start;
         let heat_time = delta_T / heat_rate;
+        let energyHeating = 0;
+        let energyPlateau = 0;
         for (let t = 0; t <= totalMinutes; t++) {
-          timeLabels.push(t);
+          timeLabels.push(t/60);
           let currentTemp = (t <= heat_time) ? temp_start + (delta_T * t / heat_time) : temp_end;
           tempData.push(currentTemp);
           let currentEff = Math.max(efficiencyInput * (1 - eff_decrease * (currentTemp - temp_start)), 0);
           effData.push(currentEff * 100);
-          // Calcolo dell'energia per minuto
           let minuteEnergy = I_constant * area * currentEff / 60;
-          irradianceArray[t] = I_constant;  // per il grafico, nel caso non advancedSettings
+          if (t <= heat_time) { energyHeating += minuteEnergy; } else { energyPlateau += minuteEnergy; }
+          irradianceArray.push(I_constant);
           energyValues.total = (energyValues.total || 0) + minuteEnergy;
         }
-        var resultText = `
-          <strong>Heating time:</strong> ${heat_time.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} min<br>
-          <strong>Total energy:</strong> ${energyValues.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh (${(energyValues.total/1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh)
-        `;
+        var resultText = 
+          `<strong>Heating time:</strong> ${heat_time.toFixed(2)} min<br>
+           <strong>Total energy:</strong> ${energyValues.total.toFixed(2)} Wh (${(energyValues.total/1000).toFixed(2)} kWh)<br>
+           <strong>Heating phase energy:</strong> ${energyHeating.toFixed(2)} Wh (${(energyHeating/1000).toFixed(2)} kWh)<br>
+           <strong>Plateau phase energy:</strong> ${energyPlateau.toFixed(2)} Wh (${(energyPlateau/1000).toFixed(2)} kWh)`;
       } else if (heatingProfile === "stepped") {
-        // Lettura dei nuovi campi
         let plateau_temp = parseFloat(document.getElementById("plateau_temp").value);
         let plateau_duration = parseFloat(document.getElementById("plateau_duration").value);
         if (isNaN(plateau_temp) || isNaN(plateau_duration)) {
-          alert("Please enter values for Intermediate plateau temperature and duration.");
+          alert("Please enter values for intermediate plateau temperature and duration.");
           return;
         }
-        // Calcolo delle fasi:
         let t1 = (plateau_temp - temp_start) / heat_rate;
         let t2 = (temp_end - plateau_temp) / heat_rate;
         let phaseSum = t1 + plateau_duration + t2;
@@ -384,65 +557,55 @@
           alert("The total simulation time is shorter than the sum of the phases. Please check your inputs.");
           return;
         }
-        let t4 = totalMinutes - phaseSum;
         let energyHeating1 = 0, energyPlateau1 = 0, energyHeating2 = 0, energyPlateau2 = 0;
         for (let t = 0; t <= totalMinutes; t++) {
-          timeLabels.push(t);
+          timeLabels.push(t/60);
           let currentTemp = temp_start;
-          if (t < t1) {
-            currentTemp = temp_start + (plateau_temp - temp_start) * (t / t1);
-          } else if (t < t1 + plateau_duration) {
-            currentTemp = plateau_temp;
-          } else if (t < t1 + plateau_duration + t2) {
-            currentTemp = plateau_temp + (temp_end - plateau_temp) * ((t - t1 - plateau_duration) / t2);
-          } else {
-            currentTemp = temp_end;
-          }
+          if (t < t1) { currentTemp = temp_start + (plateau_temp - temp_start) * (t / t1); }
+          else if (t < t1 + plateau_duration) { currentTemp = plateau_temp; }
+          else if (t < t1 + plateau_duration + t2) { currentTemp = plateau_temp + (temp_end - plateau_temp) * ((t - t1 - plateau_duration) / t2); }
+          else { currentTemp = temp_end; }
           tempData.push(currentTemp);
           let currentEff = Math.max(efficiencyInput * (1 - eff_decrease * (currentTemp - temp_start)), 0);
           effData.push(currentEff * 100);
           let minuteEnergy = I_constant * area * currentEff / 60;
-          if (t < t1) {
-            energyHeating1 += minuteEnergy;
-          } else if (t < t1 + plateau_duration) {
-            energyPlateau1 += minuteEnergy;
-          } else if (t < t1 + plateau_duration + t2) {
-            energyHeating2 += minuteEnergy;
-          } else {
-            energyPlateau2 += minuteEnergy;
-          }
+          if (t < t1) { energyHeating1 += minuteEnergy; }
+          else if (t < t1 + plateau_duration) { energyPlateau1 += minuteEnergy; }
+          else if (t < t1 + plateau_duration + t2) { energyHeating2 += minuteEnergy; }
+          else { energyPlateau2 += minuteEnergy; }
+          energyValues.total = (energyValues.total || 0) + minuteEnergy;
         }
-        energyValues.total = energyHeating1 + energyPlateau1 + energyHeating2 + energyPlateau2;
-        var resultText = `
-          <strong>First heating energy:</strong> ${energyHeating1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
-          <strong>First plateau energy:</strong> ${energyPlateau1.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
-          <strong>Second heating energy:</strong> ${energyHeating2.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
-          <strong>Second plateau energy:</strong> ${energyPlateau2.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh<br>
-          <strong>Total energy:</strong> ${energyValues.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wh (${(energyValues.total/1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh)
-        `;
+        let totalHeatingEnergy = energyHeating1 + energyHeating2;
+        let totalPlateauEnergy = energyPlateau1 + energyPlateau2;
+        let totalHeatingTime = t1 + t2;
+        var resultText = 
+          `<strong>Heating time:</strong> ${totalHeatingTime.toFixed(2)} min<br>
+           <strong>First heating energy:</strong> ${energyHeating1.toFixed(2)} Wh<br>
+           <strong>First plateau energy:</strong> ${energyPlateau1.toFixed(2)} Wh<br>
+           <strong>Second heating energy:</strong> ${energyHeating2.toFixed(2)} Wh<br>
+           <strong>Second plateau energy:</strong> ${energyPlateau2.toFixed(2)} Wh<br>
+           <strong>Total heating energy:</strong> ${totalHeatingEnergy.toFixed(2)} Wh (${(totalHeatingEnergy/1000).toFixed(2)} kWh)<br>
+           <strong>Total plateau energy:</strong> ${totalPlateauEnergy.toFixed(2)} Wh (${(totalPlateauEnergy/1000).toFixed(2)} kWh)<br>
+           <strong>Total energy:</strong> ${energyValues.total.toFixed(2)} Wh (${(energyValues.total/1000).toFixed(2)} kWh)`;
       }
-
-      document.getElementById("output").innerHTML = resultText;
-
-      // Costruzione della curva di irradiance per l'intera giornata
+      // Curva di irradiance (asse x in ore da 0 a 24)
       if (advancedSettingsUsed) {
         let baseDate = new Date(advancedSettings.date + " 00:00");
         for (let m = 0; m <= 1440; m++) {
           let currentTime = new Date(baseDate.getTime() + m * 60000);
           let pos = SunCalc.getPosition(currentTime, advancedSettings.lat, advancedSettings.lon);
           let factor = Math.max(Math.sin(pos.altitude), 0);
-          fullDayData.push({ x: m, y: I_constant * factor });
+          fullDayData.push({ x: m/60, y: I_constant * factor });
         }
-        let simStart = advancedSettings.startHour * 60;
-        let simEnd = advancedSettings.endHour * 60;
+        let simStart = advancedSettings.startHour;
+        let simEnd = advancedSettings.endHour;
         simulationData = fullDayData.filter(point => point.x >= simStart && point.x <= simEnd);
-        simColors = simulationData.map(point => point.y > 0 ? "yellow" : "purple");
+        simColors = simulationData.map(point => point.y > 0 ? "#FF8C00" : "purple");
       } else {
         for (let m = 0; m <= totalMinutes; m++) {
-          fullDayData.push({ x: m, y: I_constant });
+          fullDayData.push({ x: m/60, y: I_constant });
         }
       }
-
       // Grafico della Temperatura
       let tempDataPoints = timeLabels.map((t, i) => ({ x: t, y: tempData[i] }));
       let ctxTemp = document.getElementById('tempChart').getContext('2d');
@@ -460,24 +623,28 @@
           }]
         },
         options: {
+          devicePixelRatio: 3,
           scales: {
             x: { 
               type: 'linear',
-              title: { display: true, text: 'Time (hours)' },
+              title: { display: true, text: 'Time (hours)', font: { size: 14 } },
               min: 0,
-              max: totalMinutes,
+              max: totalMinutes/60,
               ticks: {
-                stepSize: 60,
-                callback: value => value / 60,
+                font: { size: 12 },
+                stepSize: 1,
                 maxRotation: 0,
-                minRotation: 0
+                minRotation: 0,
+                callback: value => value.toFixed(0)
               }
             },
-            y: { title: { display: true, text: 'Temperature (°C)' } }
+            y: { 
+              title: { display: true, text: 'Temperature (°C)', font: { size: 14 } },
+              ticks: { font: { size: 12 } }
+            }
           }
         }
       });
-
       // Grafico dell'Efficienza
       let effDataPoints = timeLabels.map((t, i) => ({ x: t, y: effData[i] }));
       let ctxEff = document.getElementById('effChart').getContext('2d');
@@ -495,22 +662,28 @@
           }]
         },
         options: {
+          devicePixelRatio: 3,
           scales: {
             x: { 
               type: 'linear',
-              title: { display: true, text: 'Time (hours)' },
+              title: { display: true, text: 'Time (hours)', font: { size: 14 } },
               min: 0,
-              max: totalMinutes,
+              max: totalMinutes/60,
               ticks: {
-                stepSize: 60,
-                callback: value => value / 60
+                font: { size: 12 },
+                stepSize: 1,
+                maxRotation: 0,
+                minRotation: 0,
+                callback: value => value.toFixed(0)
               }
             },
-            y: { title: { display: true, text: 'Efficiency (%)' } }
+            y: { 
+              title: { display: true, text: 'Efficiency (%)', font: { size: 14 } },
+              ticks: { font: { size: 12 } }
+            }
           }
         }
       });
-
       // Grafico dell'Irradiance
       if (advancedSettingsUsed) {
         document.getElementById("irradianceContainer").style.display = "block";
@@ -536,54 +709,53 @@
                 pointBackgroundColor: simColors,
                 pointRadius: 5,
                 showLine: true,
-                borderColor: 'yellow',
+                borderColor: "#FF8C00",
                 fill: false,
                 tension: 0.1
               }
             ]
           },
           options: {
+            devicePixelRatio: 3,
             scales: {
               x: {
                 type: 'linear',
-                title: { display: true, text: 'Time (hours)' },
+                title: { display: true, text: 'Time (hours)', font: { size: 14 } },
                 min: 0,
-                max: 1440,
+                max: 24,
                 ticks: {
-                  stepSize: 60,
-                  callback: value => value / 60,
+                  font: { size: 12 },
+                  stepSize: 1,
                   maxRotation: 0,
-                  minRotation: 0
+                  minRotation: 0,
+                  callback: value => value.toFixed(0)
                 }
               },
               y: {
-                title: { display: true, text: 'Irradiance (W/m²)' }
+                title: { display: true, text: 'Irradiance (W/m²)', font: { size: 14 } },
+                ticks: { font: { size: 12 } }
               }
             }
           }
         });
-        document.getElementById("locationInfo").innerHTML = `<strong>Location:</strong> ${advancedSettings.city} (lat: ${advancedSettings.lat.toFixed(4)}, lon: ${advancedSettings.lon.toFixed(4)})`;
+        document.getElementById("locationInfo").innerHTML = `<strong>Location:</strong> ${advancedSettings.city || 'Manual Coordinates'} (lat: ${advancedSettings.lat.toFixed(4)}, lon: ${advancedSettings.lon.toFixed(4)})`;
       } else {
         document.getElementById("irradianceContainer").style.display = "none";
       }
-
+      document.getElementById("output").innerHTML = resultText;
       document.getElementById("input-container").style.display = "none";
       document.getElementById("results").style.display = "block";
     }
-
+    // Esporta i dati del grafico in CSV
     function exportChartData(chartType) {
       let chart;
-      if (chartType === 'tempChart') {
-        chart = window.tempChart;
-      } else if (chartType === 'effChart') {
-        chart = window.effChart;
-      } else {
-        return;
-      }
-      let csvContent = "data:text/csv;charset=utf-8,Time (min);Value\n";
+      if (chartType === 'tempChart') { chart = window.tempChart; }
+      else if (chartType === 'effChart') { chart = window.effChart; }
+      else { return; }
+      let csvContent = "data:text/csv;charset=utf-8,Time (hours);Value\n";
       let dataPoints = chart.data.datasets[0].data;
       for (let i = 0; i < dataPoints.length; i++) {
-        csvContent += dataPoints[i].x + ";" + dataPoints[i].y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "\n";
+        csvContent += dataPoints[i].x + ";" + dataPoints[i].y.toFixed(2) + "\n";
       }
       let encodedUri = encodeURI(csvContent);
       let link = document.createElement("a");
@@ -593,7 +765,74 @@
       link.click();
       document.body.removeChild(link);
     }
-
+    // Salva in PDF (uno per pagina, dimensioni 180x120 mm per grafico)
+    function savePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      let margin = 10;
+      let y = margin;
+      doc.setFontSize(16);
+      doc.text("Solar Panel Energy Calculator - Results", margin, y);
+      y += 10;
+      doc.setFontSize(12);
+      if (advancedSettingsUsed) {
+        let latInput = document.getElementById("adv_lat").value;
+        let lonInput = document.getElementById("adv_lon").value;
+        if(latInput && lonInput) {
+          doc.text(`Coordinates: lat = ${latInput}, lon = ${lonInput}`, margin, y);
+        } else {
+          doc.text(`City: ${document.getElementById("adv_city").value}`, margin, y);
+        }
+        y += 7;
+        doc.text(`Date: ${document.getElementById("adv_date").value}`, margin, y);
+        y += 7;
+        doc.text(`Start Hour: ${document.getElementById("adv_startHour").value}`, margin, y);
+        y += 7;
+        doc.text(`End Hour: ${document.getElementById("adv_endHour").value}`, margin, y);
+        y += 7;
+      }
+      doc.text(`Panel Area: ${document.getElementById("area").value} m²`, margin, y);
+      y += 7;
+      doc.text(`Nominal Efficiency: ${document.getElementById("efficiency").value}%`, margin, y);
+      y += 7;
+      doc.text(`Efficiency Drop: ${document.getElementById("eff_decrease").value}%/°C`, margin, y);
+      y += 7;
+      doc.text(`Heating Rate: ${document.getElementById("heat_rate").value}°C/min`, margin, y);
+      y += 7;
+      doc.text(`Initial Temperature: ${document.getElementById("temp_start").value}°C`, margin, y);
+      y += 7;
+      doc.text(`Final Temperature: ${document.getElementById("temp_end").value}°C`, margin, y);
+      y += 7;
+      doc.text(`Solar Irradiance: ${document.getElementById("irradiance").value} kWh/m²`, margin, y);
+      y += 10;
+      let resultsText = document.getElementById("output").innerText;
+      let resultsLines = resultsText.split('\n');
+      doc.text("Results:", margin, y);
+      y += 7;
+      resultsLines.forEach(line => {
+          doc.text(line, margin, y);
+          y += 7;
+          if (y > 270) { doc.addPage(); y = margin; }
+      });
+      let tempCanvas = document.getElementById("tempChart");
+      let tempImgData = tempCanvas.toDataURL("image/png", 1.0);
+      doc.addPage();
+      doc.text("Temperature Chart", margin, margin);
+      doc.addImage(tempImgData, "PNG", margin, margin + 10, 180, 120);
+      let effCanvas = document.getElementById("effChart");
+      let effImgData = effCanvas.toDataURL("image/png", 1.0);
+      doc.addPage();
+      doc.text("Efficiency Chart", margin, margin);
+      doc.addImage(effImgData, "PNG", margin, margin + 10, 180, 120);
+      if (advancedSettingsUsed && document.getElementById("irradianceContainer").style.display !== "none") {
+          let irrCanvas = document.getElementById("irradianceChart");
+          let irrImgData = irrCanvas.toDataURL("image/png", 1.0);
+          doc.addPage();
+          doc.text("Irradiance Chart", margin, margin);
+          doc.addImage(irrImgData, "PNG", margin, margin + 10, 180, 120);
+      }
+      doc.save("solar_calculator_results.pdf");
+    }
     function resetForm() {
       document.getElementById("area").value = "";
       document.getElementById("efficiency").value = "";
@@ -614,11 +853,15 @@
       document.getElementById("adv_date").value = "";
       document.getElementById("adv_startHour").value = "";
       document.getElementById("adv_endHour").value = "";
+      document.getElementById("adv_lat").value = "";
+      document.getElementById("adv_lon").value = "";
+      document.getElementById("coordinateInputs").style.display = "none";
+      document.getElementById("locationInputContainer").style.display = "block";
+      document.getElementById("toggleLocationBtn").innerText = "";
       document.getElementById("input-container").style.display = "block";
       document.getElementById("results").style.display = "none";
       document.getElementById("irradianceContainer").style.display = "none";
     }
-
     window.onload = resetForm;
   </script>
 
